@@ -87,9 +87,6 @@ Flags:
 	}
 
 	nameserver = string([]byte(nameserver)[1:]) // chop off @
-	if !strings.HasSuffix(nameserver, ":53") {
-		nameserver += ":53"
-	}
 
 	// ipv6 todo
 	// We use the async query handling, just to show how

@@ -110,6 +110,8 @@ var Rr_str = map[uint16]string{
 	TypeDNSKEY:     "DNSKEY",
 	TypeNSEC3:      "NSEC3",
 	TypeNSEC3PARAM: "NSEC3PARAM",
+	TypeNSEC4:      "NSEC4",
+	TypeNSEC4PARAM: "NSEC4PARAM",
 	TypeTALINK:     "TALINK",
 	TypeSPF:        "SPF",
 	TypeTKEY:       "TKEY", // Meta RR
@@ -649,7 +651,7 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
 					consumed = 4 // KeyTag(2) + Algorithm(1) + DigestType(1)
 				case "RR_SSHFP":
 					consumed = 2 // Algorithm(1) + Type(1)
-				case "RR_NSEC3PARAM":
+				case "RR_NSEC3PARAM", "RR_NSEC4PARAM":
 					consumed = 5 // Hash(1) + Flags(1) + Iterations(2) + SaltLength(1)
 				case "RR_RFC3597":
 					fallthrough // Rest is the unknown data
@@ -686,7 +688,7 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
 			case "size-base32":
 				var size int
 				switch val.Type().Name() {
-				case "RR_NSEC3":
+                                case "RR_NSEC3", "RR_NSEC4":
 					switch val.Type().Field(i).Name {
 					case "NextDomain":
 						name := val.FieldByName("HashLength")
@@ -703,7 +705,7 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
 				// a "size" string, but it must be encoded in hex in the string
 				var size int
 				switch val.Type().Name() {
-				case "RR_NSEC3":
+				case "RR_NSEC3", "RR_NSEC4":
 					switch val.Type().Field(i).Name {
 					case "Salt":
 						name := val.FieldByName("SaltLength")
