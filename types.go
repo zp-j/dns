@@ -686,6 +686,60 @@ func (rr *RR_NSEC3PARAM) String() string {
 	return s
 }
 
+type RR_NSEC4 struct {
+	Hdr        RR_Header
+	Hash       uint8
+	Flags      uint8
+	Iterations uint16
+	SaltLength uint8
+	Salt       string "size-hex"
+	NextDomain string   "size-base32"
+	TypeBitMap []uint16 "NSEC"
+}
+
+func (rr *RR_NSEC4) Header() *RR_Header {
+	return &rr.Hdr
+}
+
+func (rr *RR_NSEC4) String() string {
+	s := rr.Hdr.String()
+	s += strconv.Itoa(int(rr.Hash)) +
+		" " + strconv.Itoa(int(rr.Flags)) +
+		" " + strconv.Itoa(int(rr.Iterations)) +
+		" " + strings.ToUpper(rr.Salt) +
+		" " + rr.NextDomain
+	for i := 0; i < len(rr.TypeBitMap); i++ {
+		if _, ok := Rr_str[rr.TypeBitMap[i]]; ok {
+			s += " " + Rr_str[rr.TypeBitMap[i]]
+		} else {
+			s += " " + "TYPE" + strconv.Itoa(int(rr.TypeBitMap[i]))
+		}
+	}
+	return s
+}
+
+type RR_NSEC4PARAM struct {
+	Hdr        RR_Header
+	Hash       uint8
+	Flags      uint8
+	Iterations uint16
+	SaltLength uint8
+	Salt       string "hex" // hexsize??
+}
+
+func (rr *RR_NSEC4PARAM) Header() *RR_Header {
+	return &rr.Hdr
+}
+
+func (rr *RR_NSEC4PARAM) String() string {
+	s := rr.Hdr.String()
+	s += strconv.Itoa(int(rr.Hash)) +
+		" " + strconv.Itoa(int(rr.Flags)) +
+		" " + strconv.Itoa(int(rr.Iterations)) +
+		" " + strings.ToUpper(rr.Salt)
+	return s
+}
+
 // See RFC 4408.
 type RR_SPF struct {
 	Hdr RR_Header
@@ -849,8 +903,10 @@ var rr_mk = map[uint16]func() RR{
 	TypeNSEC:       func() RR { return new(RR_NSEC) },
 	TypeDNSKEY:     func() RR { return new(RR_DNSKEY) },
 	TypeNSEC3:      func() RR { return new(RR_NSEC3) },
+	TypeNSEC4:      func() RR { return new(RR_NSEC4) },
 	TypeDHCID:      func() RR { return new(RR_DHCID) },
 	TypeNSEC3PARAM: func() RR { return new(RR_NSEC3PARAM) },
+	TypeNSEC4PARAM: func() RR { return new(RR_NSEC4PARAM) },
 	TypeTKEY:       func() RR { return new(RR_TKEY) },
 	TypeTSIG:       func() RR { return new(RR_TSIG) },
 	TypeURI:        func() RR { return new(RR_URI) },
