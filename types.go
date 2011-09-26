@@ -72,6 +72,9 @@ const (
 	TypeTA    uint16 = 32768
 	TypeDLV   uint16 = 32769
 
+	TypeNSEC4      uint16 = 65326
+	TypeNSEC4PARAM uint16 = 65327
+
 	// valid Question.Qclass
 	ClassINET   = 1
 	ClassCSNET  = 2
@@ -162,8 +165,8 @@ func NewRR(i uint16) RR {
 }
 
 type RR_ANY struct {
-        Hdr RR_Header
-        // Does not have any rdata
+	Hdr RR_Header
+	// Does not have any rdata
 }
 
 func (rr *RR_ANY) Header() *RR_Header {
@@ -792,7 +795,7 @@ func (rr *RR_TSIG) String() string {
 		" " + strconv.Itoa(int(rr.MACSize)) +
 		" " + strings.ToUpper(rr.MAC) +
 		" " + strconv.Itoa(int(rr.OrigId)) +
-		" " + strconv.Itoa(int(rr.Error)) +     // BIND prints NOERROR
+		" " + strconv.Itoa(int(rr.Error)) + // BIND prints NOERROR
 		" " + strconv.Itoa(int(rr.OtherLen)) +
 		" " + rr.OtherData
 }

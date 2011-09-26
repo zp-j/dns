@@ -35,6 +35,8 @@ const (
 	ECCGOST          = 12
 	ECDSAP256SHA256  = 13
 	ECDSAP384SHA384  = 14
+	DSANSEC4SHA1     = 15
+	RSASHA1NSEC4SHA1 = 16
 )
 
 // DNSSEC hashing algorithm codes.
@@ -337,7 +339,7 @@ func (s *RR_RRSIG) Verify(k *RR_DNSKEY, rrset RRset) os.Error {
 		return rsa.VerifyPKCS1v15(pubkey, ch, sighash, sigbuf)
 	}
 	// Unknown alg
-        return ErrAlg
+	return ErrAlg
 }
 
 // ValidityPeriod uses RFC1982 serial arithmetic to calculate 
