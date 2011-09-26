@@ -693,7 +693,7 @@ type RR_NSEC4 struct {
 	Iterations uint16
 	SaltLength uint8
 	Salt       string "size-hex"
-	NextDomain string   "size-base32"
+	NextDomain string   "domain-name"
 	TypeBitMap []uint16 "NSEC"
 }
 

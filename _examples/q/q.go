@@ -26,6 +26,7 @@ func main() {
 	ad := flag.Bool("ad", false, "set AD flag in query")
 	cd := flag.Bool("cd", false, "set CD flag in query")
 	rd := flag.Bool("rd", true, "unset RD flag in query")
+        port := flag.Int("port", 53, "use this port")
 	tcp := flag.Bool("tcp", false, "TCP mode")
 	nsid := flag.Bool("nsid", false, "ask for NSID")
 	fp := flag.Bool("fingerprint", false, "enable server detection")
@@ -42,7 +43,6 @@ func main() {
 	var qname []string
 
 	flag.Parse()
-
 Flags:
 	for i := 0; i < flag.NArg(); i++ {
 		// If it starts with @ it is a nameserver
@@ -87,6 +87,7 @@ Flags:
 	}
 
 	nameserver = string([]byte(nameserver)[1:]) // chop off @
+        nameserver += ":" + strconv.Itoa(*port)
 
 	// ipv6 todo
 	// We use the async query handling, just to show how
