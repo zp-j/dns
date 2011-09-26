@@ -55,6 +55,12 @@ const (
 	REVOKE = 1 << 7
 )
 
+// NSEC3/NSEC4 flag values.
+const (
+        OPT_OUT = 1
+        WILDCARD = 1 << 8
+)
+
 // The RRSIG needs to be converted to wireformat with some of
 // the rdata (the signature) missing. Use this struct to easy
 // the conversion (and re-use the pack/unpack functions).
