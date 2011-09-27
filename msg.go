@@ -705,7 +705,7 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
 				// a "size" string, but it must be encoded in hex in the string
 				var size int
 				switch val.Type().Name() {
-                                case "RR_NSEC3":
+                                case "RR_NSEC3", "RR_NSEC4":
 					switch val.Type().Field(i).Name {
 					case "Salt":
 						name := val.FieldByName("SaltLength")
