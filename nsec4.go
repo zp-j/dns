@@ -51,7 +51,6 @@ ClosestEncloser:
                         }
                 }
                 nc := NextCloser(q.Name, ce)
-
                 // If we didn't find the closest isn't found here, we have a NODATA wilcard response
 
                 println("Clostest encloser found:", ce, HashName(ce, algo, iter, salt))
@@ -59,7 +58,7 @@ ClosestEncloser:
                 // One of these NSEC4s MUST cover the next closer
 
                 // if q.Name == ce -> Check nodata, wildcard flag off
-                if q.Name == ce {
+                if strings.ToUpper(q.Name) == strings.ToUpper(ce) {
                         println("WE HAVE TO DO A NODATA PROOF")
                 }
 

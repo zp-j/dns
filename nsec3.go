@@ -31,8 +31,8 @@ func HashName(label string, ha uint8, iterations uint16, salt string) string {
 	name = name[:off]
 	var s hash.Hash
 	switch ha {
-	case 0: // NSEC4 - no hashing
-		return label
+	case 0: // NSEC4 - no hashing, return it as uppercase, because we do that too when we hash
+		return strings.ToUpper(label)
 	case SHA1:
 		s = sha1.New()
 	default:
@@ -64,7 +64,7 @@ func NextCloser(qname, ce string) string {
 	// to get the next closer
 	// root label goed wrong here
 	for i, l := range LabelSliceReverse(strings.Split(ce, ".")) {
-		if ql[i] == l {
+		if strings.ToUpper(ql[i]) == strings.ToUpper(l) {
 			match = l
 		} else {
 			break

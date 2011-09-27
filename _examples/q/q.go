@@ -125,6 +125,10 @@ Flags:
                 return
         }
 	for _, v := range qname {
+                // Make v fqdn
+                if v[len(v)-1] != '.' {
+                        v += "."
+                }
 		m.Question[0] = dns.Question{v, qtype, qclass}
 		m.Id = dns.Id()
 		if *query {
