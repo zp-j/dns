@@ -51,14 +51,14 @@ const (
 // DNSKEY flag values.
 const (
 	KSK    = 1
-	ZSK    = 1 << 8
-	REVOKE = 1 << 7
+	ZSK    = 1 << 7
+	REVOKE = 1 << 6
 )
 
 // NSEC3/NSEC4 flag values.
 const (
         OPT_OUT = 1
-        WILDCARD = 1 << 8
+        WILDCARD = 1 << 7
 )
 
 // The RRSIG needs to be converted to wireformat with some of
@@ -195,7 +195,7 @@ func (s *RR_RRSIG) Sign(k PrivateKey, rrset RRset) os.Error {
 	s.OrigTtl = rrset[0].Header().Ttl
 	s.TypeCovered = rrset[0].Header().Rrtype
 	s.TypeCovered = rrset[0].Header().Rrtype
-	s.Labels = Labels(rrset[0].Header().Name)
+	s.Labels = LabelCount(rrset[0].Header().Name)
 	if strings.HasPrefix(rrset[0].Header().Name, "*") {
 		s.Labels-- // wildcards, remove from label count
 	}
