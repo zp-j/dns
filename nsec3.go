@@ -12,9 +12,9 @@ type saltWireFmt struct {
 	Salt string "size-hex"
 }
 
-// HashName hashes a string or label according to RFC5155. It returns
+// HashName hashes a string or a name according to RFC5155. It returns
 // the hashed string.
-func HashName(label string, ha int, iterations int, salt string) string {
+func HashName(label string, ha uint8, iterations uint16, salt string) string {
 	saltwire := new(saltWireFmt)
 	saltwire.Salt = salt
 	wire := make([]byte, DefaultMsgSize)
@@ -31,6 +31,8 @@ func HashName(label string, ha int, iterations int, salt string) string {
 	name = name[:off]
 	var s hash.Hash
 	switch ha {
+        case 0:         // NSEC4 - no hashing
+                return label
 	case SHA1:
 		s = sha1.New()
 	default:
@@ -42,7 +44,7 @@ func HashName(label string, ha int, iterations int, salt string) string {
 	io.WriteString(s, string(name))
 	nsec3 := s.Sum()
 	// k > 0
-	for k := 0; k < iterations; k++ {
+	for k := 0; k < int(iterations); k++ {
 		s.Reset()
 		nsec3 = append(nsec3, wire...)
 		io.WriteString(s, string(nsec3))
@@ -55,8 +57,8 @@ func HashName(label string, ha int, iterations int, salt string) string {
 // to RFC 5155.
 // Use the parameters from the NSEC3 itself.
 func (nsec3 *RR_NSEC3) HashNames() {
-	nsec3.Header().Name = HashName(nsec3.Header().Name, int(nsec3.Hash), int(nsec3.Iterations), nsec3.Salt)
-	nsec3.NextDomain = HashName(nsec3.NextDomain, int(nsec3.Hash), int(nsec3.Iterations), nsec3.Salt)
+	nsec3.Header().Name = HashName(nsec3.Header().Name, nsec3.Hash, nsec3.Iterations, nsec3.Salt)
+	nsec3.NextDomain = HashName(nsec3.NextDomain, nsec3.Hash, nsec3.Iterations, nsec3.Salt)
 }
 
 // NsecVerify verifies the negative response (NXDOMAIN/NODATA) in 

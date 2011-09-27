@@ -152,6 +152,7 @@ forever:
                                         fmt.Printf("%s\n", msgToFingerprint(r.Reply))
                                 }
 				fmt.Printf("%v", r.Reply)
+                                r.Reply.Nsec4Verify(r.Request.Question[0])
 			}
 			i++
 			if i == len(qname) {

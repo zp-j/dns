@@ -1,75 +1,32 @@
 package dns
 
 import (
-	"io"
-	"hash"
-	"strings"
-	"crypto/sha1"
+	"fmt"
 	"os"
+	"strings"
 )
 
-type saltWireFmt struct {
-	Salt string "size-hex"
-}
+// Nsec3Verify verifies an denial of existence response.
+// It needs to original query and the reply message.
+// Returns nil when ok, otherwise error indicating what the
+// problem is.
+func (m *Msg) Nsec4Verify(q Question) os.Error {
+	if len(m.Answer) == 0 && len(m.Ns) > 0 {
+		// Maybe an NXDOMAIN
+		nsec4 := SieveRR(m.Ns, TypeNSEC4)
+                if len(nsec4) == 0 {
+                        println("Nie goed")
+                        return nil
+                }
+                algo := nsec4[0].(*RR_NSEC4).Hash
+                iter := nsec4[0].(*RR_NSEC4).Iterations
+                salt := nsec4[0].(*RR_NSEC4).Salt
 
-// HashName hashes a string or label according to RFC5155. It returns
-// the hashed string.
-func HashName(label string, ha int, iterations int, salt string) string {
-	saltwire := new(saltWireFmt)
-	saltwire.Salt = salt
-	wire := make([]byte, DefaultMsgSize)
-	n, ok := packStruct(saltwire, wire, 0)
-	if !ok {
-		return ""
+		// One of these NSEC4s MUST match the closest encloser
+                for _, ce := range LabelSlice(q.Name) {
+                        fmt.Printf("%v %v\n", ce, strings.ToLower(HashName(ce, algo, iter, salt)))
+                }
+
 	}
-	wire = wire[:n]
-	name := make([]byte, 255)
-	off, ok1 := packDomainName(strings.ToLower(label), name, 0)
-	if !ok1 {
-		return ""
-	}
-	name = name[:off]
-	var s hash.Hash
-	switch ha {
-	case SHA1:
-		s = sha1.New()
-	default:
-		return ""
-	}
-
-	// k = 0
-	name = append(name, wire...)
-	io.WriteString(s, string(name))
-	nsec3 := s.Sum()
-	// k > 0
-	for k := 0; k < iterations; k++ {
-		s.Reset()
-		nsec3 = append(nsec3, wire...)
-		io.WriteString(s, string(nsec3))
-		nsec3 = s.Sum()
-	}
-	return unpackBase32(nsec3)
-}
-
-// Hash the ownername and the next owner name in an NSEC3 record according
-// to RFC 5155.
-// Use the parameters from the NSEC3 itself.
-func (nsec3 *RR_NSEC3) HashNames() {
-	nsec3.Header().Name = HashName(nsec3.Header().Name, int(nsec3.Hash), int(nsec3.Iterations), nsec3.Salt)
-	nsec3.NextDomain = HashName(nsec3.NextDomain, int(nsec3.Hash), int(nsec3.Iterations), nsec3.Salt)
-}
-
-// NsecVerify verifies the negative response (NXDOMAIN/NODATA) in 
-// the message m. 
-// NsecVerify returns nil when the NSECs in the message contain
-// the correct proof. This function does not validates the NSECs
-func (m *Msg) NsecVerify(q Question) os.Error {
-
-        return nil
-}
-
-// Nsec3Verify verifies ...
-func (m *Msg) Nsec3Verify(q Question) os.Error {
-
-        return nil
+	return nil
 }

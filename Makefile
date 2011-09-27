@@ -16,14 +16,15 @@ GOFILES=\
 	keygen.go\
 	kparse.go\
 	msg.go\
-	nsec3.go \
-	nsec4.go \
+	nsec3.go\
+	nsec4.go\
 	qnamestring.go\
-	server.go \
-	rawmsg.go \
+	server.go\
+	rawmsg.go\
 	tsig.go\
 	types.go\
 	update.go\
+	rr.go\
 	xfr.go\
 	zparse.go\
 
