@@ -692,7 +692,7 @@ type RR_NSEC4 struct {
 	Flags      uint8
 	Iterations uint16
 	SaltLength uint8
-	Salt       string "size-hex"
+	Salt       string   "size-hex"
 	NextDomain string   "domain-name"
 	TypeBitMap []uint16 "NSEC"
 }
@@ -706,7 +706,7 @@ func (rr *RR_NSEC4) String() string {
 	s += strconv.Itoa(int(rr.Hash)) +
 		" " + strconv.Itoa(int(rr.Flags)) +
 		" " + strconv.Itoa(int(rr.Iterations)) +
-		" " + strings.ToUpper(rr.Salt) +
+		" " + saltString(rr.Salt) +
 		" " + rr.NextDomain
 	for i := 0; i < len(rr.TypeBitMap); i++ {
 		if _, ok := Rr_str[rr.TypeBitMap[i]]; ok {
@@ -736,9 +736,19 @@ func (rr *RR_NSEC4PARAM) String() string {
 	s += strconv.Itoa(int(rr.Hash)) +
 		" " + strconv.Itoa(int(rr.Flags)) +
 		" " + strconv.Itoa(int(rr.Iterations)) +
-		" " + strings.ToUpper(rr.Salt)
+		" " + saltString(rr.Salt)
 	return s
 }
+
+// saltString converts a NSECX salt to uppercase and
+// returns "-" when it is empty
+func saltString(s string) string {
+        if len(s) == 0 {
+                return "-"
+        }
+        return strings.ToUpper(s)
+}
+
 
 // See RFC 4408.
 type RR_SPF struct {
