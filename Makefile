@@ -17,6 +17,7 @@ GOFILES=\
 	kparse.go\
 	msg.go\
 	nsec3.go \
+	nsec4.go \
 	qnamestring.go\
 	server.go \
 	rawmsg.go \
