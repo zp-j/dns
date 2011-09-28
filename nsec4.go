@@ -50,8 +50,41 @@ ClosestEncloser:
                                 }
                         }
                 }
+                if ce == "goed.fout." {
+                        // If we didn't find the closest here, we have a NODATA wilcard response
+                        println("CE NIET GEVONDEN")
+                        println("WILDCARD NODATA RESPONSE")
+                        // chop the qname, append the wildcard label, and see it we have a match
+                        // Zijn we nog wel in de zone bezig als we deze antwoord hebben
+                        // dat moeten we toch wel controleren TODO(MG)
+Synthesis:
+                        for _, nsec := range nsec4 {
+                                for _, ce1 := range LabelSlice(q.Name) {
+                                        source := "*." + ce1
+                                        if ce1 == "." {
+                                                source = "*."
+
+                                        }
+                                        println(source, ":", HashName(source, algo, iter, salt))
+                                        switch algo {
+                                        case 0:
+                                                if HashName(source, algo, iter, salt) == strings.ToUpper(nsec.Header().Name) {
+                                                        ce = ce1
+                                                        break Synthesis
+                                                }
+                                        default:
+                                                if HashName(source, algo, iter, salt) == strings.ToUpper(Labels(nsec.Header().Name, 0)) {
+                                                        ce = ce1
+                                                        break Synthesis
+                                                }
+                                        }
+                                }
+                        }
+                        println("Wildcard synthesis found, CE = ", ce)
+                        // Als niet gevonden, shit hits the fan?!
+                        return nil
+                }
                 nc := NextCloser(q.Name, ce)
-                // If we didn't find the closest isn't found here, we have a NODATA wilcard response
 
                 println("Clostest encloser found:", ce, HashName(ce, algo, iter, salt))
                 println("Next closer:", nc)

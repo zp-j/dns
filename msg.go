@@ -553,6 +553,8 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
 					//fmt.Fprintf(os.Stderr, "dns: overflow unpacking NSEC")
 					return lenmsg, false
 				}
+                                //println("blocks", blocks)
+                                //println("windows", window)
 				if blocks == 0 {
 					// Nothing encoded in this window
 					// Kinda lame to alloc above and to clear it here
@@ -863,7 +865,10 @@ func unpackRR(msg []byte, off int) (rr RR, off1 int, ok bool) {
 	}
 	off, ok = unpackStruct(rr, msg, off0)
 	if off != end {
-		return &h, end, true
+                println("Failed to unpack the RR", h.Rrtype)
+                // return half parsed record...
+                return rr, end, true
+		//return &h, end, true
 	}
 	return rr, off, ok
 }
