@@ -116,13 +116,12 @@ NextCloser:
 
                         default:
                                 // NSEC3/NSEC4-like, the first label only
-                                println(nc)
-                                println(strings.ToUpper(HashName(nc, algo, iter, salt)))
+                                println(nc, "Hashed:", strings.ToUpper(HashName(nc, algo, iter, salt)))
                                 println(nsec.Header().Name)
                                 println(nsec.(*RR_NSEC4).NextDomain)
                                 if CoversName(strings.ToUpper(HashName(nc, algo, iter, salt)), Labels(nsec.Header().Name,0), Labels(nsec.(*RR_NSEC4).NextDomain,0)) {
                                         // Wildcard bit must be off
-                                        println("Covers")
+                                        println("* covers *")
                                         if nsec.(*RR_NSEC4).Flags & WILDCARD == 1 {
                                                 println("Wildcard set! Error")
                                                 println("NOT PROVEN NXDOMAIN")
