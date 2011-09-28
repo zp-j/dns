@@ -186,8 +186,14 @@ func shortRR(r dns.RR) dns.RR {
 		t.PublicKey = "( ... )"
 	case *dns.RR_RRSIG:
 		t.Signature = "( ... )"
-	case *dns.RR_NSEC3:
-		t.Salt = "-" // nobody cares
+        case *dns.RR_NSEC3:
+                if len(t.TypeBitMap) > 5 {
+                        t.TypeBitMap = t.TypeBitMap[1:5]
+                }
+        case *dns.RR_NSEC4:
+                if len(t.TypeBitMap) > 5 {
+                        t.TypeBitMap = t.TypeBitMap[1:5]
+                }
 	}
 	return r
 }

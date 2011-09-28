@@ -13,7 +13,9 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
         if len(m.Answer) > 0 && len(m.Ns) > 0 {
                 // Wildcard expansion
                 // Closest encloser inferred from SIG in authority and qname
-                println("EXPANDED WILDCARD PROOF")
+                println("EXPANDED WILDCARD PROOF or DNAME CNAME")
+                println("NODATA")
+                // I need to check the type bitmap
                 // wildcard bit not set?
         }
 
@@ -80,20 +82,26 @@ Synthesis:
                                         }
                                 }
                         }
-                        println("Wildcard synthesis found, CE = ", ce)
+                        println("Source of synthesis found, CE = ", ce)
                         // Als niet gevonden, shit hits the fan?!
+                        if ce == "goed.fout." {
+                                println("Source of synth not found")
+                        }
+                }
+
+                // if q.Name == ce -> Check nodata, wildcard flag off
+                if strings.ToUpper(q.Name) == strings.ToUpper(ce) {
+                        println("WE HAVE TO DO A NODATA PROOF")
+                        println("CHECK TYPE BITMAP")
                         return nil
                 }
+
                 nc := NextCloser(q.Name, ce)
 
                 println("Clostest encloser found:", ce, HashName(ce, algo, iter, salt))
                 println("Next closer:", nc)
                 // One of these NSEC4s MUST cover the next closer
 
-                // if q.Name == ce -> Check nodata, wildcard flag off
-                if strings.ToUpper(q.Name) == strings.ToUpper(ce) {
-                        println("WE HAVE TO DO A NODATA PROOF")
-                }
 
                 println("NEXT CLOSER PROOF")
 NextCloser:
@@ -117,8 +125,10 @@ NextCloser:
                                         println("Covers")
                                         if nsec.(*RR_NSEC4).Flags & WILDCARD == 1 {
                                                 println("Wildcard set! Error")
+                                                println("NOT PROVEN NXDOMAIN")
                                         } else {
                                                 println("Wildcard not set")
+                                                println("NXDOMAIN IS PROVEN, IF NSEC4S ARE VALIDATED")
                                                 break NextCloser
                                         }
                                 }

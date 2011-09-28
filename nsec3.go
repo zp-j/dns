@@ -54,26 +54,21 @@ func HashName(label string, ha uint8, iterations uint16, salt string) string {
 }
 
 // NextCloser constructs the next closer name from the closest encloser
-// and returns it.
+// and the qname and return it.
 func NextCloser(qname, ce string) string {
+	cl := LabelSliceReverse(strings.Split(ce, "."))
 	ql := LabelSliceReverse(strings.Split(qname, "."))
-	match := ""
-
-	// Match until it doesn't match anymore, the previous
-	// match is the label we should add to the closest encloser
-	// to get the next closer
-	// root label goed wrong here
-	for i, l := range LabelSliceReverse(strings.Split(ce, ".")) {
-		if strings.ToUpper(ql[i]) == strings.ToUpper(l) {
-			match = l
-		} else {
-			break
-		}
-	}
-	if len(match) == 0 {
-		return ""
-	}
-	return match + "." + ce
+        i := 0
+        for i = 0; i < len(cl); i++ {
+                if ql[i] != cl[i] {
+                        break
+                }
+        }
+        if i == len(cl) {
+                // Entire loop looped
+//                i--
+        }
+        return ql[i] + "." + ce
 }
 
 // CoversName returns true when the name falls in the

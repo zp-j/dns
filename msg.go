@@ -540,15 +540,16 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
 				fv.Set(reflect.ValueOf(opt))
 				off = off1 + int(optlen)
 			case "NSEC": // NSEC/NSEC3
+                                // THIS IS TOTALLY BOGUS
 				if off+1 > lenmsg {
 					//fmt.Fprintf(os.Stderr, "dns: overflow unpacking NSEC")
 					return lenmsg, false
 				}
 				// Fix multple windows TODO(mg)
-				nsec := make([]uint16, 256) // use append TODO(mg)
 				ni := 0
 				window := int(msg[off])
 				blocks := int(msg[off+1])
+				nsec := make([]uint16, blocks * 256) // use append TODO(mg)
 				if off+blocks > lenmsg {
 					//fmt.Fprintf(os.Stderr, "dns: overflow unpacking NSEC")
 					return lenmsg, false
