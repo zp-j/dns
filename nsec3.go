@@ -76,17 +76,7 @@ func NextCloser(qname, ce string) string {
 // If ownername (or name?) contains a dot a non-hashed matched is
 // assumed (NSEC), if does not, we do a NSEC3/NSEC4 match.
 func CoversName(name, ownername, nextname string) bool {
-	// strings.Index should be something DNS specific
-	// that knows the escaping of names
-	switch strings.Index(ownername, ".") {
-	case -1:
-		// NSEC3/4 match
-		return strings.ToUpper(ownername) < strings.ToUpper(name) && strings.ToUpper(name) < strings.ToUpper(nextname)
-	default:
-		return false
-	}
-	panic("not reached")
-	return false
+        return strings.ToUpper(ownername) < strings.ToUpper(name) && strings.ToUpper(name) < strings.ToUpper(nextname)
 }
 
 // Hash the ownername and the next owner name in an NSEC3 record according
