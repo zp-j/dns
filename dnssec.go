@@ -57,8 +57,8 @@ const (
 
 // NSEC3/NSEC4 flag values.
 const (
-        OPT_OUT = 1
-        WILDCARD = 1 << 7
+	OPT_OUT  = 1
+	WILDCARD = 1 << 7
 )
 
 // The RRSIG needs to be converted to wireformat with some of
