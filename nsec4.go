@@ -17,6 +17,9 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
 		println("NODATA")
 		// I need to check the type bitmap
 		// wildcard bit not set?
+		// MM: No need to check the wildcard bit here:
+		//     This response has only 1 NSEC4 and it does not match
+		//     the closest encloser (it covers next closer).
 	}
 
 	if len(m.Answer) == 0 && len(m.Ns) > 0 {
@@ -51,10 +54,21 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
 		if ce == "goed.fout." {
 			// If we didn't find the closest here, we have a NODATA wilcard response
 			println("CE NIET GEVONDEN")
-			println("WILDCARD NODATA RESPONSE")
+			println(" (WILDCARD) NODATA RESPONSE")
 			// chop the qname, append the wildcard label, and see it we have a match
 			// Zijn we nog wel in de zone bezig als we deze antwoord hebben
 			// dat moeten we toch wel controleren TODO(MG)
+			// MM: source-of-synthesis (source) = *.closest-encloser (ce)
+			// 1. ce is an ancestor of QNAME of which source is matched by an
+			// NSEC4 RR present in the response.
+			// 2. The name one label longer than ce (but still an ancestor of --
+			// or equal to -- QNAME) is covered by an NSEC4 RR present in the
+			// response.
+			// 3. Are the NSEC4 RRs from the proper zone?
+			// The NSEC4 that matches the wildcard RR is: 
+			// Check that the signer field in the RRSIG on both NSEC4 RRs
+			// is the same. If so, both NSEC4 RRs are from the same zone.
+
 		Synthesis:
 			for _, nsec := range nsec4 {
 				for _, ce1 := range LabelSlice(q.Name) {
@@ -73,12 +87,13 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
 			}
 			println("Source of synthesis found, CE = ", ce)
 			// Als niet gevonden, shit hits the fan?!
+			// MM: je hebt nog niet de gewone NODATA geprobeerd...
 			if ce == "goed.fout." {
 				println("Source of synth not found")
 			}
 		}
 
-		// if q.Name == ce -> Check nodata, wildcard flag off
+		// if q.Name == ce -> Check nodata, wildcard flag off	
 		if strings.ToUpper(q.Name) == strings.ToUpper(ce) {
 			println("WE HAVE TO DO A NODATA PROOF")
 			println("CHECK TYPE BITMAP")
