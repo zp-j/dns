@@ -365,7 +365,7 @@ func packStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok bool)
 					msg[off] = byte(fv.Index(j).Uint())
 					off++
 				}
-			case "NSEC": // NSEC/NSEC3
+			case "NSEC": // NSEC/NSEC3/NSEC4
 				for j := 0; j < val.Field(i).Len(); j++ {
 					var _ = byte(fv.Index(j).Uint())
 				}
@@ -540,70 +540,50 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
 				fv.Set(reflect.ValueOf(opt))
 				off = off1 + int(optlen)
 			case "NSEC": // NSEC/NSEC3
-                                // THIS IS TOTALLY BOGUS
+                                // Rest of the Record it the type bitmap
+				rdlength := int(val.FieldByName("Hdr").FieldByName("Rdlength").Uint())
+                                rdlength -= (1 + 1 + 2 + len(val.FieldByName("NextDomain").String()) + 1)
 				if off+1 > lenmsg {
 					//fmt.Fprintf(os.Stderr, "dns: overflow unpacking NSEC")
 					return lenmsg, false
 				}
-				// Fix multple windows TODO(mg)
-				ni := 0
-				window := int(msg[off])
-				blocks := int(msg[off+1])
-				nsec := make([]uint16, blocks * 256) // use append TODO(mg)
-				if off+blocks > lenmsg {
-					//fmt.Fprintf(os.Stderr, "dns: overflow unpacking NSEC")
-					return lenmsg, false
-				}
-                                //println("blocks", blocks)
-                                //println("windows", window)
-				if blocks == 0 {
-					// Nothing encoded in this window
-					// Kinda lame to alloc above and to clear it here
-					nsec = nsec[:ni]
-					fv.Set(reflect.ValueOf(nsec))
-					break
-				}
+                                println(rdlength)
+                                nsec := make([]uint16, 0)
+                                length := 0
+                                window := 0
+                                seen := 2
+                                for seen < rdlength {
+                                        window = int(msg[off])
+                                        length = int(msg[off+1])
+                                        if length == 0 || length > 32 {
+                                                //fmt.Fprintf(os.Stderr, "dns: overflow unpacking NSEC")
+                                                println("illegal length value", length)
+                                                break
+//                                                return lenmsg, false
+                                        }
 
-				off += 2
-				for j := 0; j < blocks; j++ {
-					b := msg[off+j]
-					// Check the bits one by one, and set the type
-					if b&0x80 == 0x80 {
-						nsec[ni] = uint16(window*256 + j*8 + 0)
-						ni++
-					}
-					if b&0x40 == 0x40 {
-						nsec[ni] = uint16(window*256 + j*8 + 1)
-						ni++
-					}
-					if b&0x20 == 0x20 {
-						nsec[ni] = uint16(window*256 + j*8 + 2)
-						ni++
-					}
-					if b&0x10 == 0x10 {
-						nsec[ni] = uint16(window*256 + j*8 + 3)
-						ni++
-					}
-					if b&0x8 == 0x8 {
-						nsec[ni] = uint16(window*256 + j*8 + 4)
-						ni++
-					}
-					if b&0x4 == 0x4 {
-						nsec[ni] = uint16(window*256 + j*8 + 5)
-						ni++
-					}
-					if b&0x2 == 0x2 {
-						nsec[ni] = uint16(window*256 + j*8 + 6)
-						ni++
-					}
-					if b&0x1 == 0x1 {
-						nsec[ni] = uint16(window*256 + j*8 + 7)
-						ni++
-					}
-				}
-				nsec = nsec[:ni]
-				fv.Set(reflect.ValueOf(nsec))
-				off += blocks
+                                        println("off lenmsg", off, lenmsg)
+                                        println("window", window)
+                                        println("length", length )
+
+                                        off += 2
+                                        for j := 0; j < length; j++ {
+                                                b := msg[off+j]
+                                                // Check the bits one by one, and set the type
+                                                if b&0x80 == 0x80 { nsec = append(nsec, uint16(window*256 + j*8 + 0)) }
+                                                if b&0x40 == 0x40 { nsec = append(nsec, uint16(window*256 + j*8 + 1)) }
+                                                if b&0x20 == 0x20 { nsec = append(nsec, uint16(window*256 + j*8 + 2)) }
+                                                if b&0x10 == 0x10 { nsec = append(nsec, uint16(window*256 + j*8 + 3)) }
+                                                if b&0x8 == 0x8 { nsec = append(nsec, uint16(window*256 + j*8 + 4)) }
+                                                if b&0x4 == 0x4 { nsec = append(nsec, uint16(window*256 + j*8 + 5)) }
+                                                if b&0x2 == 0x2 { nsec = append(nsec, uint16(window*256 + j*8 + 6)) }
+                                                if b&0x1 == 0x1 { nsec = append(nsec, uint16(window*256 + j*8 + 7)) }
+                                                println(len(nsec))
+                                        }
+                                        off += length
+                                        seen += length + 2
+                                }
+                                fv.Set(reflect.ValueOf(nsec))
 			}
 		case reflect.Struct:
 			off, ok = unpackStructValue(fv, msg, off)
