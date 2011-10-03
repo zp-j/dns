@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
@@ -95,8 +96,14 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
 
 		// if q.Name == ce -> Check nodata, wildcard flag off	
 		if strings.ToUpper(q.Name) == strings.ToUpper(ce) {
-			println("WE HAVE TO DO A NODATA PROOF")
-			println("CHECK TYPE BITMAP")
+			println("WE HAVE TO DO A NODATA PROOF 2")
+                        for _, nsec := range nsec4 {
+                                println(HashName(ce, algo, iter, salt)+suffix, strings.ToUpper(nsec.Header().Name))
+                                if HashName(ce, algo, iter, salt)+suffix == strings.ToUpper(nsec.Header().Name) {
+                                        fmt.Printf("We should not have the type? %v\n", !bitmap(nsec.(*RR_NSEC4), q.Qtype))
+                                }
+                        }
+			println("CHECK TYPE BITMAP 2")
 			return nil
 		}
 
@@ -137,4 +144,16 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
 
 	}
 	return nil
+}
+
+func bitmap(n *RR_NSEC4, needle uint16) bool {
+	for _, t := range n.TypeBitMap {
+		if t == needle {
+			return true
+		}
+                if t > needle {
+                        return false
+                }
+	}
+        return false
 }

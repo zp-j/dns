@@ -539,7 +539,7 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
 				opt[0].Data = hex.EncodeToString(msg[off1 : off1+int(optlen)])
 				fv.Set(reflect.ValueOf(opt))
 				off = off1 + int(optlen)
-			case "NSEC": // NSEC/NSEC3
+			case "NSEC": // NSEC/NSEC3/NSEC4
                                 // Rest of the Record it the type bitmap
 				rdlength := int(val.FieldByName("Hdr").FieldByName("Rdlength").Uint())
                                 rdlength -= (1 + 1 + 2 + len(val.FieldByName("NextDomain").String()) + 1)
@@ -547,7 +547,6 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
 					//fmt.Fprintf(os.Stderr, "dns: overflow unpacking NSEC")
 					return lenmsg, false
 				}
-                                println(rdlength)
                                 nsec := make([]uint16, 0)
                                 length := 0
                                 window := 0
@@ -562,10 +561,6 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
 //                                                return lenmsg, false
                                         }
 
-                                        println("off lenmsg", off, lenmsg)
-                                        println("window", window)
-                                        println("length", length )
-
                                         off += 2
                                         for j := 0; j < length; j++ {
                                                 b := msg[off+j]
@@ -578,7 +573,6 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
                                                 if b&0x4 == 0x4 { nsec = append(nsec, uint16(window*256 + j*8 + 5)) }
                                                 if b&0x2 == 0x2 { nsec = append(nsec, uint16(window*256 + j*8 + 6)) }
                                                 if b&0x1 == 0x1 { nsec = append(nsec, uint16(window*256 + j*8 + 7)) }
-                                                println(len(nsec))
                                         }
                                         off += length
                                         seen += length + 2
