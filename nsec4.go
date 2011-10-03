@@ -101,6 +101,11 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
                                 println(HashName(ce, algo, iter, salt)+suffix, strings.ToUpper(nsec.Header().Name))
                                 if HashName(ce, algo, iter, salt)+suffix == strings.ToUpper(nsec.Header().Name) {
                                         fmt.Printf("We should not have the type? %v\n", !bitmap(nsec.(*RR_NSEC4), q.Qtype))
+                                        if !bitmap(nsec.(*RR_NSEC4), q.Qtype) {
+                                                println("NODATA IS PROVEN, IF NSEC4S ARE VALID")
+                                        }
+                                        return nil
+
                                 }
                         }
 			println("CHECK TYPE BITMAP 2")
@@ -135,7 +140,7 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
 					println("NOT PROVEN NXDOMAIN")
 				} else {
 					println("Wildcard not set")
-					println("NXDOMAIN IS PROVEN, IF NSEC4S ARE VALIDATED")
+					println("NXDOMAIN IS PROVEN, IF NSEC4S ARE VALID")
 					break NextCloser
 				}
 			}
