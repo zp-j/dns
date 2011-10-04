@@ -100,7 +100,8 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
                         for _, nsec := range nsec4 {
                                 println(HashName(ce, algo, iter, salt)+suffix, strings.ToUpper(nsec.Header().Name))
                                 if HashName(ce, algo, iter, salt)+suffix == strings.ToUpper(nsec.Header().Name) {
-                                        fmt.Printf("We should not have the type? %v\n", !bitmap(nsec.(*RR_NSEC4), q.Qtype))
+                                        fmt.Printf("We should not have the type %s (%d)? %v\n", Rr_str[q.Qtype], q.Qtype, !bitmap(nsec.(*RR_NSEC4), q.Qtype))
+                                        fmt.Printf("                    we have: %v\n", nsec.(*RR_NSEC4).TypeBitMap)
                                         if !bitmap(nsec.(*RR_NSEC4), q.Qtype) {
                                                 println("NODATA IS PROVEN, IF NSEC4S ARE VALID")
                                         }
@@ -128,10 +129,6 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
 			println(nsec.Header().Name)
 			println(nsec.(*RR_NSEC4).NextDomain)
 
-			// NSEC3/NSEC4-like, the first label only NOT NEEDED
-			println(nc, "Hashed:", strings.ToUpper(HashName(nc, algo, iter, salt))+suffix)
-			println(nsec.Header().Name)
-			println(nsec.(*RR_NSEC4).NextDomain)
 			if CoversName(HashName(nc, algo, iter, salt), nsec.Header().Name, nsec.(*RR_NSEC4).NextDomain) {
 				// Wildcard bit must be off
 				println("* covers *")
