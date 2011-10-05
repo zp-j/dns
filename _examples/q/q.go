@@ -181,11 +181,16 @@ func shortMsg(in *dns.Msg) *dns.Msg {
 }
 
 func shortRR(r dns.RR) dns.RR {
+        r.Header().Ttl = 300
 	switch t := r.(type) {
+        case *dns.RR_DS:
+                t.Digest = "( ... )"
 	case *dns.RR_DNSKEY:
 		t.PublicKey = "( ... )"
 	case *dns.RR_RRSIG:
 		t.Signature = "( ... )"
+                t.Inception = 0  // For easy grepping
+                t.Expiration = 0
         case *dns.RR_NSEC3:
                 if len(t.TypeBitMap) > 5 {
                         t.TypeBitMap = t.TypeBitMap[1:5]
