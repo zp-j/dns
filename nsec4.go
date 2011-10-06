@@ -91,6 +91,8 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
 			// MM: je hebt nog niet de gewone NODATA geprobeerd...
                         // need nsec that matches the qname directly
 //                        if HashName(q.Name, algo, iter, salt)+suffix == strings.ToUpper(nsec.Header().Name) 
+
+
 			if ce == "goed.fout." {
 				println("Source of synth not found")
 			}
