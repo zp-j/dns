@@ -187,11 +187,11 @@ func shortRR(r dns.RR) dns.RR {
         r.Header().Ttl = 300
 	switch t := r.(type) {
         case *dns.RR_DS:
-                t.Digest = "(...)"
+                t.Digest = "..."
 	case *dns.RR_DNSKEY:
-		t.PublicKey = "(...)"
+		t.PublicKey = "..."
 	case *dns.RR_RRSIG:
-		t.Signature = "(...)"
+		t.Signature = "..."
                 t.Inception = 0  // For easy grepping
                 t.Expiration = 0
         case *dns.RR_NSEC3:
