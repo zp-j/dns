@@ -23,7 +23,7 @@ type PrivateKey interface{}
 // bits should be set to the size of the algorithm.
 func (r *RR_DNSKEY) Generate(bits int) (PrivateKey, os.Error) {
 	switch r.Algorithm {
-        case RSAMD5, RSASHA1, RSASHA256, RSASHA1NSEC3SHA1:
+        case RSAMD5, RSASHA1, RSASHA256, RSASHA1NSEC3SHA1, PRIVATEDNS:
 		if bits < 512 || bits > 4096 {
 			return nil, ErrKeySize
 		}
@@ -42,7 +42,7 @@ func (r *RR_DNSKEY) Generate(bits int) (PrivateKey, os.Error) {
 	}
 
 	switch r.Algorithm {
-        case RSAMD5, RSASHA1, RSASHA256, RSASHA512, RSASHA1NSEC3SHA1:
+        case RSAMD5, RSASHA1, RSASHA256, RSASHA512, RSASHA1NSEC3SHA1, PRIVATEDNS:
 		priv, err := rsa.GenerateKey(rand.Reader, bits)
 		if err != nil {
 			return nil, err

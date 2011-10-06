@@ -37,6 +37,8 @@ const (
 	ECDSAP384SHA384  = 14
 	DSANSEC4SHA1     = 15
 	RSASHA1NSEC4SHA1 = 16
+        PRIVATEDNS       = 253  // Private (experimental keys)
+        PRIVATEOID       = 254
 )
 
 // DNSSEC hashing algorithm codes.
@@ -319,6 +321,9 @@ func (s *RR_RRSIG) Verify(k *RR_DNSKEY, rrset RRset) os.Error {
 	signeddata = append(signeddata, wire...)
 
 	sigbuf := s.sigBuf() // Get the binary signature data
+        if s.Algorithm == PRIVATEDNS {
+                // remove the domain name and assume its our
+        }
 
 	switch s.Algorithm {
 	case RSASHA1, RSASHA1NSEC3SHA1, RSASHA256, RSASHA512, RSAMD5:
@@ -525,4 +530,6 @@ var alg_str = map[uint8]string{
 	ECCGOST:          "ECC-GOST",
 	ECDSAP256SHA256:  "ECDSAP256SHA256",
 	ECDSAP384SHA384:  "ECDSAP384SHA384",
+        PRIVATEDNS:       "PRIVATEDNS",
+        PRIVATEOID:       "PRIVATEOID",
 }
