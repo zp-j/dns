@@ -64,6 +64,10 @@ func sendProbe(c *dns.Client, addr string, f *fingerprint, q dns.Question) *fing
 
 // This leads to strings like: "QUERY,NOERROR,qr,aa,tc,RD,ad,cd,z,1,0,0,1,DO,4096,NSID"
 type fingerprint struct {
+	Qname              string       // question name
+	Qtype              uint16       // question type
+	Qclass             uint16       // question class
+	Qanswer            string       // question section from the reply
 	Error              os.Error
 	Opcode             int
 	Rcode              int
@@ -81,7 +85,7 @@ type fingerprint struct {
 	Extra              int
 	Do                 bool
 	UDPSize            int
-        Nsid               bool
+	Nsid               bool
 }
 
 // String creates a (short) string representation of a dns message.
@@ -226,10 +230,10 @@ func msgToFingerprint(m *dns.Msg) *fingerprint {
 			// version is always 0 - and I cannot set it anyway
 			f.Do = r.(*dns.RR_OPT).Do()
 			f.UDPSize = int(r.(*dns.RR_OPT).UDPSize())
-                        if len(r.(*dns.RR_OPT).Option) == 1 {
-                                // Only support NSID atm
-                                f.Nsid = r.(*dns.RR_OPT).Option[0].Code == dns.OptionCodeNSID
-                        }
+			if len(r.(*dns.RR_OPT).Option) == 1 {
+				// Only support NSID atm
+				f.Nsid = r.(*dns.RR_OPT).Option[0].Code == dns.OptionCodeNSID
+			}
 		}
 	}
 	return f
@@ -258,9 +262,9 @@ func (f *fingerprint) toProbe(q dns.Question) *dns.Msg {
 		m.SetEdns0(0, true)
 		// We have added an OPT RR, set the size.
 		m.Extra[0].(*dns.RR_OPT).SetUDPSize(uint16(f.UDPSize))
-                if f.Nsid {
-		        m.Extra[0].(*dns.RR_OPT).SetNsid("")
-                }
+		if f.Nsid {
+			m.Extra[0].(*dns.RR_OPT).SetNsid("")
+		}
 	}
 	return m
 }
