@@ -13,7 +13,7 @@ const (
 // Check if the server responds at all
 func dnsAlive(l *lexer) stateFn {
 	l.verbose("Alive")
-	l.setString(".,NS,IN," + QUERY_NOERROR)
+	l.setString(".,IN,NS," + QUERY_NOERROR)
 	f := l.probe()
 	if f.ok() {
 		return dnsServer
@@ -28,7 +28,7 @@ func dnsServer(l *lexer) stateFn {
 	l.verbose("Server")
 
 	// Set the DO bit
-	l.setString(".,TXT,CH,QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,4097,NSID")
+	l.setString(".,CH,TXT,QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,4097,NSID")
 	f := l.probe()
 	switch {
 	case !f.Do && f.UDPSize == 4096 && f.Rcode == dns.RcodeSuccess:
@@ -74,7 +74,7 @@ func dnsServer(l *lexer) stateFn {
 
 func dnsNsdLike(l *lexer) stateFn {
 	l.verbose("NsdLike")
-	l.setString("authors.bind.,TXT,CH," + QUERY_NOERROR)
+	l.setString("auThoRs.bInD.,CH,TXT," + QUERY_NOERROR)
 	l.probe()
 
 	return nil
@@ -86,7 +86,7 @@ func dnsBindLike(l *lexer) stateFn {
         l.emit(&item{itemSoftware, BIND})
 
         // Repeat the query, as we get a lot of information from it
-	l.setString(".,TXT,CH,QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,4097,nsid")
+	l.setString(".,CH,TXT,QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,4097,nsid")
 	f := l.probe()
 	switch {
 	case !f.Do && f.UDPSize == 4096 && f.Rcode == dns.RcodeServerFailure:
@@ -101,7 +101,7 @@ func dnsBindLike(l *lexer) stateFn {
         }
 
 	// Try authors.bind
-	l.setString("authors.bind.,TXT,CH," + QUERY_NOERROR)
+	l.setString("auThoRs.bInD.,CH,TXT," + QUERY_NOERROR)
 	f = l.probe()
 	switch f.Rcode {
 	case dns.RcodeServerFailure:
@@ -113,7 +113,7 @@ func dnsBindLike(l *lexer) stateFn {
 	}
         // The three BIND (8, 9 and 10) behave differently when
         // receiving a notify query
-	l.setString("bind.,SOA,NONE," + QUERY_NOTIFY)
+	l.setString("bind.,NONE,SOA," + QUERY_NOTIFY)
 	f = l.probe()
         switch {
         case f.Opcode == dns.OpcodeNotify:
@@ -161,13 +161,15 @@ func dnsNeustarLike(l *lexer) stateFn {
 func dnsAtlasLike(l *lexer) stateFn {
 	l.verbose("AtlasLike")
 
+	l.setString("MieK.NL.,IN,TXT," + QUERY_NOERROR)
+        l.probe()
 	return nil
 }
 
 // Check if the server returns the DO-bit when set in the request.                                                                          
 func dnsDoBitMirror(l *lexer) stateFn {
 	l.verbose("DoBitMirror")
-	l.setString(".,NS,IN,QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,0,NSID")
+	l.setString(".,IN,NS,QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,0,NSID")
 	f := l.probe()
 	// NSD doesn't set the DO bit, but does set the UDPMsg size to 4096.
 	if !f.Do && f.UDPSize == 4096 {
@@ -192,7 +194,7 @@ func dnsEDNS0Mangler(l *lexer) stateFn {
 
 func dnsTcEnable(l *lexer) stateFn {
 	l.verbose("TcEnable")
-	l.setString(".,NS,IN,QUERY,NOERROR,qr,aa,TC,rd,ra,ad,cd,z,0,0,0,0,do,0,nsid")
+	l.setString(".,IN,NS,QUERY,NOERROR,qr,aa,TC,rd,ra,ad,cd,z,0,0,0,0,do,0,nsid")
 	l.probe()
 	return nil
 }

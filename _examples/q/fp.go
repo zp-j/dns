@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+// .,IN,NS,QUERY,NOERROR,qr,aa,tc,rd,ra,ad,cd,z,0,0,0,0,do,0,nsid
+
 const (
 	// Detected software types
 	NSD        = "NSD"
@@ -93,16 +95,24 @@ func (f *fingerprint) String() string {
 		return "<nil>"
 	}
 	// Use the same order as in Perl's fpdns. But use much more flags.
-
-        // The Question.
-        s := f.Query.Name
-        s += "," + dns.Class_str[f.Query.Qclass]
-        if _, ok := dns.Rr_str[f.Query.Qtype]; ok {
-                s += "," + dns.Rr_str[f.Query.Qtype]
+        var s string
+	// The Question.
+        if len(f.Query.Name) == 0 {
+	        s = "."
         } else {
-                s += "," + "TYPE" + strconv.Itoa(int(f.Query.Qtype))
+                s = f.Query.Name
         }
+	if _, ok := dns.Class_str[f.Query.Qclass]; ok {
+		s += "," + dns.Class_str[f.Query.Qclass]
+	} else {
+		s += "," + "CLASS" + strconv.Itoa(int(f.Query.Qclass))
+	}
 
+	if _, ok := dns.Rr_str[f.Query.Qtype]; ok {
+		s += "," + dns.Rr_str[f.Query.Qtype]
+	} else {
+		s += "," + "TYPE" + strconv.Itoa(int(f.Query.Qtype))
+	}
 
 	if op, ok := dns.Opcode_str[f.Opcode]; ok {
 		s += "," + op
@@ -138,52 +148,63 @@ func (f *fingerprint) String() string {
 }
 
 // fingerStringNoSections returns the strings representation
-// without the sections' count and the EDNS0 stuff
+// without the sections' count and the EDNS0 stuff and the query
 func (f *fingerprint) StringNoSections() string {
-	s := strings.SplitN(f.String(), ",", 11)
-	return strings.Join(s[:10], ",")
+	s := strings.SplitN(f.String(), ",", 14)
+	return strings.Join(s[2:13], ",")
 }
 
 // SetString set the string to fp.. todo
 func (f *fingerprint) setString(str string) {
 	for i, s := range strings.Split(str, ",") {
 		switch i {
-                        // 3 added before
-		case 0:
+		case 0: // question section domain name
+			f.Query.Name = s
+		case 1: // Qclass
+			f.Query.Qclass = 0
+			if c, ok := dns.Str_class[s]; ok {
+				f.Query.Qclass = c
+			}
+		case 2: // Qtype
+			f.Query.Qtype = 0
+			if c, ok := dns.Str_rr[s]; ok {
+				f.Query.Qtype = c
+			}
+		case 3:
 			if op, ok := dns.Str_opcode[s]; ok {
 				f.Opcode = op
 			} else { // number
 				f.Opcode = valueOfString(s)
 			}
-		case 1:
+		case 4:
 			if op, ok := dns.Str_rcode[s]; ok {
 				f.Rcode = op
 			} else { // number
 				f.Rcode = valueOfString(s)
 			}
-		case 2:
-			f.Response = s == strings.ToUpper("qr")
-		case 3:
-			f.Authoritative = s == strings.ToUpper("aa")
-		case 4:
-			f.Truncated = s == strings.ToUpper("tc")
 		case 5:
-			f.RecursionDesired = s == strings.ToUpper("rd")
+			f.Response = s == strings.ToUpper("qr")
 		case 6:
-			f.RecursionAvailable = s == strings.ToUpper("ra")
+			f.Authoritative = s == strings.ToUpper("aa")
 		case 7:
-			f.AuthenticatedData = s == strings.ToUpper("ad")
+			f.Truncated = s == strings.ToUpper("tc")
 		case 8:
-			f.CheckingDisabled = s == strings.ToUpper("cd")
+			f.RecursionDesired = s == strings.ToUpper("rd")
 		case 9:
+			f.RecursionAvailable = s == strings.ToUpper("ra")
+		case 10:
+			f.AuthenticatedData = s == strings.ToUpper("ad")
+		case 11:
+			f.CheckingDisabled = s == strings.ToUpper("cd")
+		case 12:
 			f.Zero = s == strings.ToUpper("z")
-		case 10, 11, 12, 13:
+		case 13, 14, 15, 16:
 			// Can not set lenght of the section in the message
-		case 14:
+		case 17:
 			f.Do = s == strings.ToUpper("do")
-		case 15:
+		case 18:
 			f.UDPSize = valueOfString(s)
-		case 16:
+		case 19:
 			f.Nsid = s == strings.ToUpper("nsid")
 		default:
 			panic("unhandled fingerprint")
@@ -216,10 +237,12 @@ func msgToFingerprint(m *dns.Msg) *fingerprint {
 	h := m.MsgHdr
 	f := new(fingerprint)
 
-        // Set the old query
-        f.Query.Name = m.Question[0].Name
-        f.Query.Qtype = m.Question[0].Qtype
-        f.Query.Qclass = m.Question[0].Qclass
+	// Set the old query
+        if len(m.Question) > 0 {
+                f.Query.Name = m.Question[0].Name
+                f.Query.Qtype = m.Question[0].Qtype
+                f.Query.Qclass = m.Question[0].Qclass
+        }
 
 	f.Opcode = h.Opcode
 	f.Rcode = h.Rcode
@@ -259,8 +282,8 @@ func msgToFingerprint(m *dns.Msg) *fingerprint {
 func (f *fingerprint) toProbe() *dns.Msg {
 	m := new(dns.Msg)
 	m.MsgHdr.Id = dns.Id()
-//	m.Question = make([]dns.Question, 1)
-        m.Question[0] = dns.Question{f.Query.Name, f.Query.Qtype, f.Query.Qclass}
+	m.Question = make([]dns.Question, 1)
+	m.Question[0] = dns.Question{f.Query.Name, f.Query.Qtype, f.Query.Qclass}
 	m.MsgHdr.Opcode = f.Opcode
 	m.MsgHdr.Rcode = f.Rcode
 	m.MsgHdr.Response = f.Response
