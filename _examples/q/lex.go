@@ -41,7 +41,6 @@ type lexer struct {
 	client *dns.Client  // client used.
 	addr   string       // addr of the server being scanned.
 	fp     *fingerprint // fingerprint to test.
-//	q      dns.Question // question to ask.
 	items  chan item    // channel of scanned items.
 	state  stateFn      // the next function to enter.
 	debug  bool         // if true, the fingerprints are printed.

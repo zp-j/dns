@@ -59,13 +59,12 @@ func sendProbe(c *dns.Client, addr string, f *fingerprint) *fingerprint {
 	if err != nil {
 		return errorToFingerprint(err)
 	}
-	return msgToFingerprint(f,r)
+	return msgToFingerprint(r)
 }
 
-// This leads to strings like: "miek.nl.,IN,A,QUERY,NOERROR,qr,aa,tc,RD,ad,cd,z,1,0,0,1,DO,4096,NSID,miek.nl.,IN,A"
-// Or "miek.nl.,IN,A,QUERY,NOERROR,qr,aa,tc,RD,ad,cd,z,1,0,0,1,DO,4096,NSID,,,", where to reply is empty
+// This leads to strings like: "miek.nl.,IN,A,QUERY,NOERROR,qr,aa,tc,RD,ad,cd,z,1,0,0,1,DO,4096,NSID"
 type fingerprint struct {
-	Query              dns.Question // Question to ask
+	Query              dns.Question // Question to ask or Question of the reply
 	Error              os.Error
 	Opcode             int
 	Rcode              int
@@ -84,7 +83,6 @@ type fingerprint struct {
 	Do                 bool
 	UDPSize            int
 	Nsid               bool
-	Reply              dns.Question // Question section from the reply
 }
 
 // String creates a (short) string representation of a dns message.
@@ -136,14 +134,6 @@ func (f *fingerprint) String() string {
 	s += "," + valueOfInt(f.UDPSize)
 	s += valueOfBool(f.Nsid, ",nsid")
 
-        // A possible reply
-        s += "," + f.Reply.Name
-        s += "," + dns.Class_str[f.Reply.Qclass]
-        if _, ok := dns.Rr_str[f.Reply.Qtype]; ok {
-                s += "," + dns.Rr_str[f.Reply.Qtype]
-        } else {
-                s += "," + "TYPE" + strconv.Itoa(int(f.Reply.Qtype))
-        }
 	return s
 }
 
@@ -195,8 +185,6 @@ func (f *fingerprint) setString(str string) {
 			f.UDPSize = valueOfString(s)
 		case 16:
 			f.Nsid = s == strings.ToUpper("nsid")
-                // add 3 extra for reply message
-                // If all nil, dont set
 		default:
 			panic("unhandled fingerprint")
 		}
@@ -221,59 +209,48 @@ func errorToFingerprint(e os.Error) *fingerprint {
 	return f
 }
 
-func msgToFingerprint(f *fingerprint,m *dns.Msg) *fingerprint {
+func msgToFingerprint(m *dns.Msg) *fingerprint {
 	if m == nil {
 		return nil
 	}
 	h := m.MsgHdr
-	f1 := new(fingerprint)
+	f := new(fingerprint)
 
         // Set the old query
-        f1.Query.Name = f.Query.Name
-        f1.Query.Qtype = f.Query.Qtype
-        f1.Query.Qclass = f.Query.Qclass
+        f.Query.Name = m.Question[0].Name
+        f.Query.Qtype = m.Question[0].Qtype
+        f.Query.Qclass = m.Question[0].Qclass
 
-	f1.Opcode = h.Opcode
-	f1.Rcode = h.Rcode
-	f1.Response = h.Response
-	f1.Authoritative = h.Authoritative
-	f1.Truncated = h.Truncated
-	f1.RecursionDesired = h.RecursionDesired
-	f1.RecursionAvailable = h.RecursionAvailable
-	f1.AuthenticatedData = h.AuthenticatedData
-	f1.CheckingDisabled = h.CheckingDisabled
-	f1.Zero = h.Zero
+	f.Opcode = h.Opcode
+	f.Rcode = h.Rcode
+	f.Response = h.Response
+	f.Authoritative = h.Authoritative
+	f.Truncated = h.Truncated
+	f.RecursionDesired = h.RecursionDesired
+	f.RecursionAvailable = h.RecursionAvailable
+	f.AuthenticatedData = h.AuthenticatedData
+	f.CheckingDisabled = h.CheckingDisabled
+	f.Zero = h.Zero
 
-	f1.Question = len(m.Question)
-	f1.Answer = len(m.Answer)
-	f1.Ns = len(m.Ns)
-	f1.Extra = len(m.Extra)
-	f1.Do = false
-	f1.UDPSize = 0
-
-        // Set the reply answer section
-        if len(m.Answer) > 0 {
-                f1.Reply.Name = m.Question[0].Name
-                f1.Reply.Qtype = m.Question[0].Qtype
-                f1.Reply.Qclass = m.Question[0].Qclass
-        } else {
-                f1.Reply.Name = "."
-                f1.Reply.Qtype = 0
-                f1.Reply.Qclass = 0
-        }
+	f.Question = len(m.Question)
+	f.Answer = len(m.Answer)
+	f.Ns = len(m.Ns)
+	f.Extra = len(m.Extra)
+	f.Do = false
+	f.UDPSize = 0
 
 	for _, r := range m.Extra {
 		if r.Header().Rrtype == dns.TypeOPT {
 			// version is always 0 - and I cannot set it anyway
-			f1.Do = r.(*dns.RR_OPT).Do()
-			f1.UDPSize = int(r.(*dns.RR_OPT).UDPSize())
+			f.Do = r.(*dns.RR_OPT).Do()
+			f.UDPSize = int(r.(*dns.RR_OPT).UDPSize())
 			if len(r.(*dns.RR_OPT).Option) == 1 {
 				// Only support NSID atm
-				f1.Nsid = r.(*dns.RR_OPT).Option[0].Code == dns.OptionCodeNSID
+				f.Nsid = r.(*dns.RR_OPT).Option[0].Code == dns.OptionCodeNSID
 			}
 		}
 	}
-	return f1
+	return f
 }
 
 // Create a dns message from a fingerprint string and
