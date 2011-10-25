@@ -62,12 +62,10 @@ func sendProbe(c *dns.Client, addr string, f *fingerprint, q dns.Question) *fing
 	return msgToFingerprint(r)
 }
 
-// This leads to strings like: "QUERY,NOERROR,qr,aa,tc,RD,ad,cd,z,1,0,0,1,DO,4096,NSID"
+// This leads to strings like: "miek.nl,IN,A,miek.nl,IN,A,QUERY,NOERROR,qr,aa,tc,RD,ad,cd,z,1,0,0,1,DO,4096,NSID"
 type fingerprint struct {
-	Qname              string       // question name
-	Qtype              uint16       // question type
-	Qclass             uint16       // question class
-	Qanswer            string       // question section from the reply
+	Query              dns.Question // Question to ask
+	Reply              dns.Question // Question section from the reply
 	Error              os.Error
 	Opcode             int
 	Rcode              int
