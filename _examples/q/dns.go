@@ -13,9 +13,7 @@ const (
 // Check if the server responds at all
 func dnsAlive(l *lexer) stateFn {
 	l.verbose("Alive")
-	l.setString(QUERY_NOERROR)
-	l.setQuestion(".", dns.TypeNS, dns.ClassINET)
-
+	l.setString(".,NS,IN," + QUERY_NOERROR)
 	f := l.probe()
 	if f.ok() {
 		return dnsServer
@@ -30,8 +28,7 @@ func dnsServer(l *lexer) stateFn {
 	l.verbose("Server")
 
 	// Set the DO bit
-	l.setString("QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,4097,NSID")
-	l.setQuestion(".", dns.TypeTXT, dns.ClassCHAOS)
+	l.setString(".,TXT,CH,QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,4097,NSID")
 	f := l.probe()
 	switch {
 	case !f.Do && f.UDPSize == 4096 && f.Rcode == dns.RcodeSuccess:
@@ -77,8 +74,7 @@ func dnsServer(l *lexer) stateFn {
 
 func dnsNsdLike(l *lexer) stateFn {
 	l.verbose("NsdLike")
-	l.setString(QUERY_NOERROR)
-	l.setQuestion("authors.bind.", dns.TypeTXT, dns.ClassCHAOS)
+	l.setString("authors.bind.,TXT,CH," + QUERY_NOERROR)
 	l.probe()
 
 	return nil
@@ -90,8 +86,7 @@ func dnsBindLike(l *lexer) stateFn {
         l.emit(&item{itemSoftware, BIND})
 
         // Repeat the query, as we get a lot of information from it
-	l.setString("QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,4097,nsid")
-	l.setQuestion(".", dns.TypeTXT, dns.ClassCHAOS)
+	l.setString(".,TXT,CH,QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,4097,nsid")
 	f := l.probe()
 	switch {
 	case !f.Do && f.UDPSize == 4096 && f.Rcode == dns.RcodeServerFailure:
@@ -106,8 +101,7 @@ func dnsBindLike(l *lexer) stateFn {
         }
 
 	// Try authors.bind
-	l.setString(QUERY_NOERROR)
-	l.setQuestion("authors.bind.", dns.TypeTXT, dns.ClassCHAOS)
+	l.setString("authors.bind.,TXT,CH," + QUERY_NOERROR)
 	f = l.probe()
 	switch f.Rcode {
 	case dns.RcodeServerFailure:
@@ -119,8 +113,7 @@ func dnsBindLike(l *lexer) stateFn {
 	}
         // The three BIND (8, 9 and 10) behave differently when
         // receiving a notify query
-	l.setString(QUERY_NOTIFY)
-	l.setQuestion("bind.", dns.TypeSOA, dns.ClassNONE)
+	l.setString("bind.,SOA,NONE," + QUERY_NOTIFY)
 	f = l.probe()
         switch {
         case f.Opcode == dns.OpcodeNotify:
@@ -174,10 +167,7 @@ func dnsAtlasLike(l *lexer) stateFn {
 // Check if the server returns the DO-bit when set in the request.                                                                          
 func dnsDoBitMirror(l *lexer) stateFn {
 	l.verbose("DoBitMirror")
-
-	l.setString("QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,0,NSID")
-	l.setQuestion(".", dns.TypeNS, dns.ClassINET)
-
+	l.setString(".,NS,IN,QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,0,NSID")
 	f := l.probe()
 	// NSD doesn't set the DO bit, but does set the UDPMsg size to 4096.
 	if !f.Do && f.UDPSize == 4096 {
@@ -190,7 +180,7 @@ func dnsDoBitMirror(l *lexer) stateFn {
 func dnsEDNS0Mangler(l *lexer) stateFn {
 	l.verbose("EDNS0Mangler")
 	l.setString("NOTIFY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,do,0,nsid")
-	l.setQuestion("012345678901234567890123456789012345678901234567890123456789012.012345678901234567890123456789012345678901234567890123456789012.012345678901234567890123456789012345678901234567890123456789012.0123456789012345678901234567890123456789012345678901234567890.", dns.TypeA, dns.ClassINET)
+//	l.setQuestion("012345678901234567890123456789012345678901234567890123456789012.012345678901234567890123456789012345678901234567890123456789012.012345678901234567890123456789012345678901234567890123456789012.0123456789012345678901234567890123456789012345678901234567890.", dns.TypeA, dns.ClassINET)
 	f := l.probe()
 	// MaraDNS does not set the QR bit in the reply... but only with this question is seems
 	// QUERY,NOERROR,qr,aa,t
@@ -202,12 +192,12 @@ func dnsEDNS0Mangler(l *lexer) stateFn {
 
 func dnsTcEnable(l *lexer) stateFn {
 	l.verbose("TcEnable")
-	l.setString("QUERY,NOERROR,qr,aa,TC,rd,ra,ad,cd,z,0,0,0,0,do,0,nsid")
-	l.setQuestion(".", dns.TypeNS, dns.ClassINET)
+	l.setString(".,NS,IN,QUERY,NOERROR,qr,aa,TC,rd,ra,ad,cd,z,0,0,0,0,do,0,nsid")
 	l.probe()
-	return dnsUDPSize
+	return nil
 }
 
+/*
 func dnsUDPSize(l *lexer) stateFn {
 	l.verbose("UDPSize")
 	l.setString("QUERY,NOERROR,qr,aa,tc,rd,ra,ad,cd,z,0,0,0,0,DO,4097,nsid")
@@ -279,3 +269,4 @@ func dnsRcodeNotZone(l *lexer) stateFn {
 	l.probe()
 	return nil
 }
+*/

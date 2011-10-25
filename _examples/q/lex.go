@@ -41,14 +41,14 @@ type lexer struct {
 	client *dns.Client  // client used.
 	addr   string       // addr of the server being scanned.
 	fp     *fingerprint // fingerprint to test.
-	q      dns.Question // question to ask.
+//	q      dns.Question // question to ask.
 	items  chan item    // channel of scanned items.
 	state  stateFn      // the next function to enter.
 	debug  bool         // if true, the fingerprints are printed.
 }
 
 func (l *lexer) probe() *fingerprint {
-	f := sendProbe(l.client, l.addr, l.fp, l.q)
+	f := sendProbe(l.client, l.addr, l.fp)
 	if l.debug {
 		fmt.Printf("      QR fp: %s\n", f)
 	}
@@ -63,13 +63,6 @@ func (l *lexer) setString(s string) {
 	l.fp.setString(s)
 	if l.debug {
 		fmt.Printf("       Q fp: %s\n", s)
-	}
-}
-
-func (l *lexer) setQuestion(name string, t uint16, c uint16) {
-	l.q = dns.Question{name, t, c}
-	if l.debug {
-		fmt.Printf("             %s\n", l.q.String())
 	}
 }
 
