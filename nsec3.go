@@ -5,7 +5,6 @@ import (
 	"hash"
 	"strings"
 	"crypto/sha1"
-	"os"
 )
 
 type saltWireFmt struct {
@@ -58,17 +57,17 @@ func HashName(label string, ha uint8, iterations uint16, salt string) string {
 func NextCloser(qname, ce string) string {
 	cl := LabelSliceReverse(strings.Split(ce, "."))
 	ql := LabelSliceReverse(strings.Split(qname, "."))
-        i := 0
-        for i = 0; i < len(cl); i++ {
-                if ql[i] != cl[i] {
-                        break
-                }
-        }
-        if i == len(cl) {
-                // Entire loop looped
-//                i--
-        }
-        return ql[i] + "." + ce
+	i := 0
+	for i = 0; i < len(cl); i++ {
+		if ql[i] != cl[i] {
+			break
+		}
+	}
+	if i == len(cl) {
+		// Entire loop looped
+		//                i--
+	}
+	return ql[i] + "." + ce
 }
 
 // CoversName returns true when the name falls in the
@@ -76,7 +75,7 @@ func NextCloser(qname, ce string) string {
 // If ownername (or name?) contains a dot a non-hashed matched is
 // assumed (NSEC), if does not, we do a NSEC3/NSEC4 match.
 func CoversName(name, ownername, nextname string) bool {
-        return strings.ToUpper(ownername) < strings.ToUpper(name) && strings.ToUpper(name) < strings.ToUpper(nextname)
+	return strings.ToUpper(ownername) < strings.ToUpper(name) && strings.ToUpper(name) < strings.ToUpper(nextname)
 }
 
 // Hash the ownername and the next owner name in an NSEC3 record according
@@ -91,13 +90,13 @@ func (nsec3 *RR_NSEC3) HashNames() {
 // the message m. 
 // NsecVerify returns nil when the NSECs in the message contain
 // the correct proof. This function does not validates the NSECs
-func (m *Msg) NsecVerify(q Question) os.Error {
+func (m *Msg) NsecVerify(q Question) error {
 
 	return nil
 }
 
 // Nsec3Verify verifies ...
-func (m *Msg) Nsec3Verify(q Question) os.Error {
+func (m *Msg) Nsec3Verify(q Question) error {
 
 	return nil
 }

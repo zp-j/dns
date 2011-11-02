@@ -27,7 +27,7 @@ type ClientConfig struct {
 
 // See resolv.conf(5) on a Linux machine.
 // Parse a /etc/resolv.conf like file and return a filled out ClientConfig.
-func ClientConfigFromFile(conf string) (*ClientConfig, os.Error) {
+func ClientConfigFromFile(conf string) (*ClientConfig, error) {
 	file, err := os.Open(conf)
 	defer file.Close()
 	if err != nil {

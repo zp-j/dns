@@ -6,7 +6,6 @@
 package dns
 
 import (
-	"os"
 	"net"
 	"time"
 	"strconv"
@@ -151,7 +150,7 @@ func (q *Question) String() string {
 }
 
 // NewRRString returns the last RR contained in s.
-func NewRRString(s string) (RR, os.Error) {
+func NewRRString(s string) (RR, error) {
 	p := NewParser(strings.NewReader(s))
 	return p.First()
 }
@@ -743,12 +742,11 @@ func (rr *RR_NSEC4PARAM) String() string {
 // saltString converts a NSECX salt to uppercase and
 // returns "-" when it is empty
 func saltString(s string) string {
-        if len(s) == 0 {
-                return "-"
-        }
-        return strings.ToUpper(s)
+	if len(s) == 0 {
+		return "-"
+	}
+	return strings.ToUpper(s)
 }
-
 
 // See RFC 4408.
 type RR_SPF struct {

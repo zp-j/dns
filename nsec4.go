@@ -2,7 +2,6 @@ package dns
 
 import (
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -10,7 +9,7 @@ import (
 // It needs to original query and the reply message.
 // Returns nil when ok, otherwise error indicating what the
 // problem is.
-func (m *Msg) Nsec4Verify(q Question) os.Error {
+func (m *Msg) Nsec4Verify(q Question) error {
 	if len(m.Answer) > 0 && len(m.Ns) > 0 {
 		// Wildcard expansion
 		// Closest encloser inferred from SIG in authority and qname
@@ -89,8 +88,8 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
 			println("Source of synthesis found, CE = ", ce)
 			// Als niet gevonden, shit hits the fan?!
 			// MM: je hebt nog niet de gewone NODATA geprobeerd...
-                        // need nsec that matches the qname directly
-//                        if HashName(q.Name, algo, iter, salt)+suffix == strings.ToUpper(nsec.Header().Name) 
+			// need nsec that matches the qname directly
+			//                        if HashName(q.Name, algo, iter, salt)+suffix == strings.ToUpper(nsec.Header().Name) 
 
 
 			if ce == "goed.fout." {
@@ -101,18 +100,18 @@ func (m *Msg) Nsec4Verify(q Question) os.Error {
 		// if q.Name == ce -> Check nodata, wildcard flag off	
 		if strings.ToUpper(q.Name) == strings.ToUpper(ce) {
 			println("WE HAVE TO DO A NODATA PROOF 2")
-                        for _, nsec := range nsec4 {
-                                println(HashName(ce, algo, iter, salt)+suffix, strings.ToUpper(nsec.Header().Name))
-                                if HashName(ce, algo, iter, salt)+suffix == strings.ToUpper(nsec.Header().Name) {
-                                        fmt.Printf("We should not have the type %s (%d)? %v\n", Rr_str[q.Qtype], q.Qtype, !bitmap(nsec.(*RR_NSEC4), q.Qtype))
-                                        fmt.Printf("                    we have: %v\n", nsec.(*RR_NSEC4).TypeBitMap)
-                                        if !bitmap(nsec.(*RR_NSEC4), q.Qtype) {
-                                                println("NODATA IS PROVEN, IF NSEC4S ARE VALID")
-                                        }
-                                        return nil
+			for _, nsec := range nsec4 {
+				println(HashName(ce, algo, iter, salt)+suffix, strings.ToUpper(nsec.Header().Name))
+				if HashName(ce, algo, iter, salt)+suffix == strings.ToUpper(nsec.Header().Name) {
+					fmt.Printf("We should not have the type %s (%d)? %v\n", Rr_str[q.Qtype], q.Qtype, !bitmap(nsec.(*RR_NSEC4), q.Qtype))
+					fmt.Printf("                    we have: %v\n", nsec.(*RR_NSEC4).TypeBitMap)
+					if !bitmap(nsec.(*RR_NSEC4), q.Qtype) {
+						println("NODATA IS PROVEN, IF NSEC4S ARE VALID")
+					}
+					return nil
 
-                                }
-                        }
+				}
+			}
 			println("CHECK TYPE BITMAP 2")
 			return nil
 		}
@@ -157,9 +156,9 @@ func bitmap(n *RR_NSEC4, needle uint16) bool {
 		if t == needle {
 			return true
 		}
-                if t > needle {
-                        return false
-                }
+		if t > needle {
+			return false
+		}
 	}
-        return false
+	return false
 }

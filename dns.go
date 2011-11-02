@@ -52,7 +52,6 @@ package dns
 
 import (
 	"net"
-	"os"
 	"strconv"
 )
 
@@ -65,17 +64,17 @@ const (
 
 // Error represents a DNS error
 type Error struct {
-	Error   string
+	Err     string
 	Name    string
 	Server  net.Addr
 	Timeout bool
 }
 
-func (e *Error) String() string {
+func (e *Error) Error() string {
 	if e == nil {
 		return "<nil>"
 	}
-	return e.Error
+	return e.Err
 }
 
 type RR interface {
@@ -153,9 +152,9 @@ func (s RRset) Ok() bool {
 
 // Exchange is used in communicating with the resolver.
 type Exchange struct {
-	Request *Msg     // The question sent.
-	Reply   *Msg     // The answer to the question that was sent.
-	Error   os.Error // If something when wrong, this contains the error.
+	Request *Msg  // The question sent.
+	Reply   *Msg  // The answer to the question that was sent.
+	Error   error // If something when wrong, this contains the error.
 }
 
 // DNS resource records.
