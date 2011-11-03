@@ -68,9 +68,6 @@ func dnsServer(l *lexer) stateFn {
 		// Microsoft leaves DO bit, but echo's the UDPSize. FORMERR.
 		l.emit(&item{itemVendor, MICROSOFT})
 		return dnsWindowsLike
-        case f.Query.Qclass == 0 && f.Query.Qtype == 0 && f.Rcode == dns.RcodeSuccess:
-		l.emit(&item{itemVendor, EURID})
-		return dnsYadifaLike
 	default:
 		return nil
 	}
@@ -154,6 +151,20 @@ func dnsMaraLike(l *lexer) stateFn {
 
 func dnsPowerdnsLike(l *lexer) stateFn {
 	l.verbose("PowerdnsLike")
+	l.setString(".,CH,TXT,QUERY,NOERROR,qr,aa,tc,RD,ra,ad,cd,z,0,0,0,0,DO,4097,NSID")
+	f := l.probe()
+        if !f.Response && f.Query.Qclass == 0 && f.Query.Qtype == 0 && f.Rcode == dns.RcodeSuccess {
+                // Yadifa does not set the QR bit on this
+		l.emit(&item{itemVendor, EURID})
+		return dnsYadifaLike
+        }
+	return nil
+}
+
+func dnsYadifaLike(l *lexer) stateFn {
+	l.verbose("YadifaLike")
+        l.setString(".,CLASS0,TYPE0,QUERY,NOERROR,QR,aa,tc,rd,ra,ad,cd,z,0,0,0,0,do,0,nsid")
+        l.probe()
 	return nil
 }
 
@@ -170,10 +181,6 @@ func dnsAtlasLike(l *lexer) stateFn {
 	return nil
 }
 
-func dnsYadifaLike(l *lexer) stateFn {
-	l.verbose("YadifaLike")
-	return nil
-}
 
 // Check if the server returns the DO-bit when set in the request.                                                                          
 func dnsDoBitMirror(l *lexer) stateFn {
