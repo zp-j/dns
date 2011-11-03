@@ -39,6 +39,9 @@ func dnsServer(l *lexer) stateFn {
 		// MaraDNS clears DO BIT, UDPSize to 0. REFUSED
 		l.emit(&item{itemVendor, MARA})
 		return dnsMaraLike
+        case f.Do && f.UDPSize == 2800 && f.Rcode == dns.RcodeSuccess:
+		// PowerDNS(SEC) set UDP bufsize to 2800, resets UDPSize. NOERROR
+                fallthrough
 	case !f.Do && f.UDPSize == 0 && f.Rcode == dns.RcodeSuccess:
 		// PowerDNS(SEC) clears DO bit, resets UDPSize. NOERROR
 		l.emit(&item{itemVendor, POWER})
@@ -65,6 +68,9 @@ func dnsServer(l *lexer) stateFn {
 		// Microsoft leaves DO bit, but echo's the UDPSize. FORMERR.
 		l.emit(&item{itemVendor, MICROSOFT})
 		return dnsWindowsLike
+        case f.Query.Qclass == 0 && f.Query.Qtype == 0 && f.Rcode == dns.RcodeSuccess:
+		l.emit(&item{itemVendor, EURID})
+		return dnsYadifaLike
 	default:
 		return nil
 	}
@@ -148,13 +154,11 @@ func dnsMaraLike(l *lexer) stateFn {
 
 func dnsPowerdnsLike(l *lexer) stateFn {
 	l.verbose("PowerdnsLike")
-
 	return nil
 }
 
 func dnsNeustarLike(l *lexer) stateFn {
 	l.verbose("NeustarLike")
-
 	return nil
 }
 
@@ -163,6 +167,11 @@ func dnsAtlasLike(l *lexer) stateFn {
 
 	l.setString("MieK.NL.,IN,TXT," + QUERY_NOERROR)
         l.probe()
+	return nil
+}
+
+func dnsYadifaLike(l *lexer) stateFn {
+	l.verbose("YadifaLike")
 	return nil
 }
 

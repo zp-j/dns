@@ -4,7 +4,6 @@ package main
 import (
 	"dns"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -20,6 +19,7 @@ const (
 	MARADNS    = "MaraDNS"
 	NEUSTARDNS = "Neustar DNS"
 	ATLAS      = "Atlas"
+        YADIFA     = "Yadifa"
 
 	// Vendors
 	ISC       = "ISC"
@@ -29,6 +29,7 @@ const (
 	POWER     = "PowerDNS.com"
 	NEUSTAR   = "Neustar"
 	VERISIGN  = "Verisign"
+        EURID     = "EurID"
 )
 
 func startParse(addr string) {
@@ -67,7 +68,7 @@ func sendProbe(c *dns.Client, addr string, f *fingerprint) *fingerprint {
 // This leads to strings like: "miek.nl.,IN,A,QUERY,NOERROR,qr,aa,tc,RD,ad,cd,z,1,0,0,1,DO,4096,NSID"
 type fingerprint struct {
 	Query              dns.Question // Question to ask or Question of the reply
-	Error              os.Error
+	Error              error
 	Opcode             int
 	Rcode              int
 	Response           bool
@@ -95,13 +96,13 @@ func (f *fingerprint) String() string {
 		return "<nil>"
 	}
 	// Use the same order as in Perl's fpdns. But use much more flags.
-        var s string
+	var s string
 	// The Question.
-        if len(f.Query.Name) == 0 {
-	        s = "."
-        } else {
-                s = f.Query.Name
-        }
+	if len(f.Query.Name) == 0 {
+		s = "."
+	} else {
+		s = f.Query.Name
+	}
 	if _, ok := dns.Class_str[f.Query.Qclass]; ok {
 		s += "," + dns.Class_str[f.Query.Qclass]
 	} else {
@@ -221,10 +222,10 @@ func (f *fingerprint) error() string {
 	if f.Error == nil {
 		panic("error is nil")
 	}
-	return f.Error.String()
+	return f.Error.Error()
 }
 
-func errorToFingerprint(e os.Error) *fingerprint {
+func errorToFingerprint(e error) *fingerprint {
 	f := new(fingerprint)
 	f.Error = e
 	return f
@@ -238,11 +239,11 @@ func msgToFingerprint(m *dns.Msg) *fingerprint {
 	f := new(fingerprint)
 
 	// Set the old query
-        if len(m.Question) > 0 {
-                f.Query.Name = m.Question[0].Name
-                f.Query.Qtype = m.Question[0].Qtype
-                f.Query.Qclass = m.Question[0].Qclass
-        }
+	if len(m.Question) > 0 {
+		f.Query.Name = m.Question[0].Name
+		f.Query.Qtype = m.Question[0].Qtype
+		f.Query.Qclass = m.Question[0].Qclass
+	}
 
 	f.Opcode = h.Opcode
 	f.Rcode = h.Rcode

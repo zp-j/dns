@@ -13,7 +13,7 @@ func q(w dns.RequestWriter, m *dns.Msg) {
 	w.Send(m)
 	r, err := w.Receive()
 	if err != nil {
-		fmt.Printf("%s\n", err.String())
+		fmt.Printf("%s\n", err.Error())
 	}
 	w.Write(r)
 }
