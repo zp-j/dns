@@ -56,7 +56,7 @@ func TestSecure(t *testing.T) {
 	key.PublicKey = "AwEAAcNEU67LJI5GEgF9QLNqLO1SMq1EdoQ6E9f85ha0k0ewQGCblyW2836GiVsm6k8Kr5ECIoMJ6fZWf3CQSQ9ycWfTyOHfmI3eQ/1Covhb2y4bAmL/07PhrL7ozWBW3wBfM335Ft9xjtXHPy7ztCbV9qZ4TVDTW/Iyg0PiwgoXVesz"
 
 	// It should validate. Period is checked seperately, so this will keep on working
-	if sig.Verify(key, []RR{soa}) != nil {
+	if sig.Verify(key, []RR{soa}, false) != nil {
 		t.Log("Failure to validate")
 		t.Fail()
 	}
@@ -136,13 +136,16 @@ func TestSignVerify(t *testing.T) {
 	sig.SignerName = key.Hdr.Name
 	sig.Algorithm = RSASHA256
 
+	zip := true
 	for _, r := range []RR{soa, soa1} {
-		if sig.Sign(privkey, []RR{r}) != nil {
+		if sig.Sign(privkey, []RR{r}, zip) != nil {
 			t.Log("Failure to sign the SOA record")
 			t.Fail()
 			continue
 		}
-		if sig.Verify(key, []RR{r}) != nil {
+		t.Logf("Sig: %s\n", sig.String())
+		t.Logf("Sig: %d\n", sig.Len())
+		if sig.Verify(key, []RR{r}, zip) != nil {
 			t.Log("Failure to validate")
 			t.Fail()
 			continue
@@ -204,7 +207,7 @@ func TestDnskey(t *testing.T) {
 	sig.SignerName = "miek.nl."
 	sig.Signature = "kLq/5oFy3Sh5ZxPGFMCyHq8MtN6E17R1Ln9+bJ2Q76YYAxFE8Xlie33A1GFctH2uhzRzJKuP/JSjUkrvGk2rjBm32z9zXtZsKx/4yV0da2nLRm44NOmX6gsP4Yia8mdqPUajjkyLzAzU2bevtesJm0Z65AcmPdq3tUZODdRAcng="
 
-	sig.Verify(key, []RR{soa})
+	sig.Verify(key, []RR{soa}, false)
 
 	// From Kmiek.nl*.private
         openssl := "135560614087352210480379313279722604826647214111257577861451621491284835543707521986085999189597017237768514876957888744370440811423088511394629855684615382349190289731989185193184712980579812986523080792122141528583964882610028199770199112837017606561901919812183422914622295620927795008308854924436086101591"
@@ -262,12 +265,12 @@ func TestKeyRSA(t *testing.T) {
 	sig.KeyTag = key.KeyTag()
 	sig.SignerName = key.Hdr.Name
 
-	if err := sig.Sign(priv, []RR{soa}); err != nil {
+	if err := sig.Sign(priv, []RR{soa}, false); err != nil {
 		t.Logf("Failed to sign")
 		t.Fail()
 		return
 	}
-	if err := sig.Verify(key, []RR{soa}); err != nil {
+	if err := sig.Verify(key, []RR{soa}, false); err != nil {
 		t.Logf("Failed to verify")
 		t.Fail()
 	}

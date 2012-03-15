@@ -67,7 +67,7 @@ Activate: 20110302104537`
 	sig.SignerName = k.Hdr.Name
 	sig.Algorithm = k.Algorithm
 
-	sig.Sign(p, []RR{soa})
+	sig.Sign(p, []RR{soa}, false)
 	if sig.Signature != "D5zsobpQcmMmYsUMLxCVEtgAdCvTu8V/IEeP4EyLBjqPJmjt96bwM9kqihsccofA5LIJ7DN91qkCORjWSTwNhzCv7bMyr2o5vBZElrlpnRzlvsFIoAZCD9xg6ZY7ZyzUJmU6IcTwG4v3xEYajcpbJJiyaw/RqR90MuRdKPiBzSo=" {
 		t.Log("Signature is not correct")
 		t.Logf("%v\n", sig)

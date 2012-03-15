@@ -15,6 +15,8 @@ package dns
 
 import (
 	"bytes"
+	"compress/flate"
+	"io/ioutil"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -25,6 +27,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
+	"fmt"
 	"hash"
 	"io"
 	"math/big"
@@ -192,7 +195,7 @@ func (k *RR_DNSKEY) ToDS(h int) *RR_DS {
 // otherwise false.
 // The signature data in the RRSIG is filled by this method.
 // There is no check if RRSet is a proper (RFC 2181) RRSet.
-func (s *RR_RRSIG) Sign(k PrivateKey, rrset []RR) error {
+func (s *RR_RRSIG) Sign(k PrivateKey, rrset []RR, zip bool) error {
 	if k == nil {
 		return ErrPrivKey
 	}
@@ -208,7 +211,6 @@ func (s *RR_RRSIG) Sign(k PrivateKey, rrset []RR) error {
 	s.TypeCovered = rrset[0].Header().Rrtype
 	s.TypeCovered = rrset[0].Header().Rrtype
 	s.Labels, _, _ = IsDomainName(rrset[0].Header().Name)
-	// ...
 	if strings.HasPrefix(rrset[0].Header().Name, "*") {
 		s.Labels-- // wildcard, remove from label count
 	}
@@ -267,7 +269,17 @@ func (s *RR_RRSIG) Sign(k PrivateKey, rrset []RR) error {
 		if err != nil {
 			return err
 		}
-		s.Signature = unpackBase64(signature)
+		if zip {
+			zipbuf := new(bytes.Buffer)
+			w, _ := flate.NewWriter(zipbuf, flate.BestCompression)
+			fmt.Printf("%v\n", signature)
+			w.Write(signature)
+			w.Close()
+			fmt.Printf("%v\n", zipbuf.Bytes())
+			s.Signature = unpackBase64(zipbuf.Bytes())
+		} else {
+			s.Signature = unpackBase64(signature)
+		}
 	case *ecdsa.PrivateKey:
 		r1, s1, err := ecdsa.Sign(rand.Reader, p, sighash)
 		if err != nil {
@@ -286,7 +298,7 @@ func (s *RR_RRSIG) Sign(k PrivateKey, rrset []RR) error {
 // Verify validates an RRSet with the signature and key. This is only the
 // cryptographic test, the signature validity period must be checked separately.
 // This function modifies the rdata of some RRs (lowercases domain names) for the validation to work. 
-func (s *RR_RRSIG) Verify(k *RR_DNSKEY, rrset []RR) error {
+func (s *RR_RRSIG) Verify(k *RR_DNSKEY, rrset []RR, zip bool) error {
 	// First the easy checks
 	if len(rrset) == 0 {
 		return ErrSigGen
@@ -338,7 +350,7 @@ func (s *RR_RRSIG) Verify(k *RR_DNSKEY, rrset []RR) error {
 	}
 	signeddata = append(signeddata, wire...)
 
-	sigbuf := s.sigBuf() // Get the binary signature data
+	sigbuf := s.sigBuf(zip) // Get the binary signature data
 	if s.Algorithm == PRIVATEDNS {
 		// remove the domain name and assume its our
 	}
@@ -387,12 +399,20 @@ func (s *RR_RRSIG) ValidityPeriod() bool {
 }
 
 // Return the signatures base64 encodedig sigdata as a byte slice.
-func (s *RR_RRSIG) sigBuf() []byte {
+func (s *RR_RRSIG) sigBuf(zip bool) []byte {
 	sigbuf, err := packBase64([]byte(s.Signature))
 	if err != nil {
 		return nil
 	}
-	return sigbuf
+	if !zip {
+		return sigbuf
+	}
+	r := flate.NewReader(bytes.NewBuffer(sigbuf))
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil
+	}
+	return b
 }
 
 // Extract the RSA public key from the Key record
