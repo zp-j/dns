@@ -35,7 +35,7 @@ func q(w dns.RequestWriter, m *dns.Msg) {
 	origbuf, _ := r.Pack()
 	z.Write(origbuf)
 	z.Close()
-	fmt.Printf("Uncompressed/Compressed %d/%d (%f)\n", len(origbuf), len(zipbuf.Bytes()), float32(len(origbuf))/float32(len(zipbuf.Bytes())))
+	fmt.Printf(";; Uncompressed/Compressed %d/%d (%f)\n", len(origbuf), len(zipbuf.Bytes()), float32(len(origbuf))/float32(len(zipbuf.Bytes())))
 	w.Write(r)
 }
 
