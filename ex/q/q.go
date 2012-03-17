@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/flate"
 	"dns"
 	"flag"
 	"fmt"
@@ -27,6 +29,13 @@ func q(w dns.RequestWriter, m *dns.Msg) {
 	if w.TsigStatus() != nil {
 		fmt.Printf(";; Couldn't verify TSIG signature: %s\n", w.TsigStatus().Error())
 	}
+	// Show zipped output
+	zipbuf := new(bytes.Buffer)
+	z, _ := flate.NewWriter(zipbuf, flate.BestCompression)
+	origbuf, _ := r.Pack()
+	z.Write(origbuf)
+	z.Close()
+	fmt.Printf("Uncompressed/Compressed %d/%d (%f)\n", len(origbuf), len(zipbuf.Bytes()), float32(len(origbuf))/float32(len(zipbuf.Bytes())))
 	w.Write(r)
 }
 
@@ -267,7 +276,7 @@ func sectionCheck(set []dns.RR, server string, tcp bool) {
 			if dnskey != nil {
 				where = "disk"
 			}
-			if err := rr.(*dns.RR_RRSIG).Verify(key, rrset); err != nil {
+			if err := rr.(*dns.RR_RRSIG).Verify(key, rrset, false); err != nil {
 				fmt.Printf(";- Bogus signature, %s does not validate (DNSKEY %s/%d/%s) [%s]\n", 
 					shortSig(rr.(*dns.RR_RRSIG)), key.Header().Name, key.KeyTag(), where, err.Error())
 			} else {
