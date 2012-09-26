@@ -311,7 +311,8 @@ func (z *Zone) FindFunc(s string, f func(interface{}) bool) (*ZoneData, bool, bo
 // If config is nil DefaultSignatureConfig is used. The signatureConfig
 // describes how the zone must be signed and if the SEP flag (for KSK)
 // should be honored. If signatures approach their expriration time, they
-// are refreshed with the current set of keys. Valid signatures are left alone.
+// are refreshed. If the key used for this signatures is not in the set of current
+// keys the signature is removed. Valid signatures are left alone.
 //
 // Basic use pattern for signing a zone with the default SignatureConfig:
 //
@@ -322,8 +323,7 @@ func (z *Zone) FindFunc(s string, f func(interface{}) bool) (*ZoneData, bool, bo
 //	}
 //	// Admire your signed zone...
 //
-// TODO(mg): resigning is not implemented
-// TODO(mg): NSEC3 is not implemented
+// TODO(mg): NSEC3 is not implemented.
 func (z *Zone) Sign(keys map[*RR_DNSKEY]PrivateKey, config *SignatureConfig) error {
 	z.Lock()
 	defer z.Unlock()
@@ -337,7 +337,7 @@ func (z *Zone) Sign(keys map[*RR_DNSKEY]PrivateKey, config *SignatureConfig) err
 	}
 
 	errChan := make(chan error)
-	radChan := make(chan *radix.Radix, config.SignerRoutines * 2)
+	radChan := make(chan *radix.Radix, config.SignerRoutines*2)
 
 	// Start the signer goroutines
 	wg := new(sync.WaitGroup)
@@ -408,6 +408,7 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 	nsec.Hdr.Name = node.Name
 	nsec.NextDomain = next.Name // Only thing I need from next, actually
 	nsec.Hdr.Class = ClassINET
+	now := time.Now().UTC()
 
 	// Still need to add NSEC + RRSIG for this data, there might also be a DS record
 	if node.NonAuth == true {
@@ -418,14 +419,22 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 		nsec.TypeBitMap = append(nsec.TypeBitMap, TypeNSEC)  // Add me too!
 		sort.Sort(uint16Slice(nsec.TypeBitMap))
 		node.RR[TypeNSEC] = []RR{nsec}
-		now := time.Now().UTC()
+		// Check for sig that are expired and 
 		for k, p := range keys {
 			if config.HonorSepFlag && k.Flags&SEP == SEP {
 				// only sign keys with SEP keys
 				continue
 			}
-			// which sigs to check??
+			for _, sig := range node.Signatures[TypeNSEC] {
+				// there should be one sig with this keytag
+				if sig.KeyTag == keytags[k] {
+					if now.Sub(uint32ToTime(sig.Expiration)) < config.Refresh {
+						// needs refreshing
+					}
+				}
+			}
 
+			// TODO:refactor this a little
 			s := new(RR_RRSIG)
 			s.SignerName = k.Hdr.Name
 			s.Hdr.Ttl = k.Hdr.Ttl
@@ -440,6 +449,13 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 			node.Signatures[TypeNSEC] = append(node.Signatures[TypeNSEC], s)
 			// DS
 			if ds, ok := node.RR[TypeDS]; ok {
+				for _, sig := range node.Signatures[TypeDS] {
+					if sig.KeyTag == keytags[k] {
+						if now.Sub(uint32ToTime(s.Expiration)) < config.Refresh {
+							// needs refreshing
+						}
+					}
+				}
 				s := new(RR_RRSIG)
 				s.SignerName = k.Hdr.Name
 				s.Hdr.Ttl = k.Hdr.Ttl
@@ -456,13 +472,19 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 		}
 		return nil
 	}
-	now := time.Now().UTC()
 	for k, p := range keys {
 		for t, rrset := range node.RR {
 			if k.Flags&SEP == SEP {
 				if _, ok := rrset[0].(*RR_DNSKEY); !ok {
 					// only sign keys with SEP keys
 					continue
+				}
+			}
+			for _, sig := range node.Signatures[t] {
+				if sig.KeyTag == keytags[k] {
+					if now.Sub(uint32ToTime(sig.Expiration)) < config.Refresh {
+						// needs refreshing
+					}
 				}
 			}
 
@@ -494,6 +516,7 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 		s.Inception = timeToUint32(now.Add(-config.InceptionOffset))
 		s.Expiration = timeToUint32(now.Add(jitterDuration(config.Jitter)).Add(config.Validity))
 		e := s.Sign(p, []RR{nsec})
+		// check rrsig too
 		if e != nil {
 			return e
 		}
@@ -520,7 +543,7 @@ func uint32ToTime(t uint32) time.Time {
 		mod = 0
 	}
 	duration := time.Duration((mod * year68) * int64(t))
-	return time.Unix(0,0).Add(duration)
+	return time.Unix(0, 0).Add(duration)
 }
 
 // jitterTime returns a random +/- jitter
