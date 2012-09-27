@@ -96,7 +96,10 @@ type dnskeyWireFmt struct {
 	/* Nothing is left out */
 }
 
-// KeyTag calculates the keytag (or key-id) of the DNSKEY.
+// KeyTag calculates the keytag (or key-id as it is sometimes called) of the DNSKEY.
+// Note that it is a bad idea to use this key tag as a unique identification of keys.
+// It is only a 16 bit value and different keys may share such a tag.
+// If you want to uniquely identify a key you'll need to use the HashTag method.
 func (k *RR_DNSKEY) KeyTag() uint16 {
 	if k == nil {
 		return 0
@@ -135,6 +138,16 @@ func (k *RR_DNSKEY) KeyTag() uint16 {
 		keytag &= 0xFFFF
 	}
 	return uint16(keytag)
+}
+
+// HashTag generates a (sha1) hash of the key. This hash can be used to
+// uniquely identify the key. The algorithm used for the hash creation
+// is identical to the algorithm used to create a DS record. Note that
+// HashTag is something completely different than the key's key tag.
+func (k *RR_DNSKEY) HashTag() string {
+	// Make a DS and throw away stuff we don't need
+	return k.ToDS(SHA1).Digest
+
 }
 
 // ToDS converts a DNSKEY record to a DS record.
