@@ -419,7 +419,7 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 		nsec.TypeBitMap = append(nsec.TypeBitMap, TypeNSEC)  // Add me too!
 		sort.Sort(uint16Slice(nsec.TypeBitMap))
 		node.RR[TypeNSEC] = []RR{nsec}
-		// Check for sig that are expired and 
+
 		for k, p := range keys {
 			if config.HonorSepFlag && k.Flags&SEP == SEP {
 				// only sign keys with SEP keys
