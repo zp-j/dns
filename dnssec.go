@@ -211,8 +211,9 @@ func (k *RR_DNSKEY) ToDS(h int) *RR_DS {
 	return ds
 }
 
-// Sign signs an RRSet. The signature needs to be filled in with
-// the values: Inception, Expiration, KeyTag, SignerName and Algorithm.
+// Sign signs an RRSet. The signature must be filled in with
+// the values: KeyTag, SignerName, Algorithm and
+// KeyHashTag. The signature should be filled in with Inception and Expiration dates.
 // The rest is copied from the RRset. Sign returns true when the signing went OK,
 // otherwise false.
 // There is no check if RRSet is a proper (RFC 2181) RRSet.
@@ -221,7 +222,7 @@ func (rr *RR_RRSIG) Sign(k PrivateKey, rrset []RR) error {
 		return ErrPrivKey
 	}
 	// s.Inception and s.Expiration may be 0 (rollover etc.), the rest must be set
-	if rr.KeyTag == 0 || len(rr.SignerName) == 0 || rr.Algorithm == 0 {
+	if rr.KeyTag == 0 || len(rr.SignerName) == 0 || rr.Algorithm == 0 || rr.KeyHashTag == "" {
 		return ErrKey
 	}
 

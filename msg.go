@@ -584,6 +584,9 @@ func packStructValue(val reflect.Value, msg []byte, off int, compression map[str
 			switch val.Type().Field(i).Tag.Get("dns") {
 			default:
 				return lenmsg, false
+			case "nowire":
+				// do not convert
+				continue
 			case "base64":
 				b64, err := packBase64([]byte(s))
 				if err != nil {
@@ -905,6 +908,9 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, ok boo
 			default:
 				// println("dns: unknown tag unpacking string")
 				return lenmsg, false
+			case "nowire":
+				// do no convert
+				continue
 			case "hex":
 				// Rest of the RR is hex encoded, network order an issue here?
 				rdlength := int(val.FieldByName("Hdr").FieldByName("Rdlength").Uint())

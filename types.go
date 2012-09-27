@@ -832,7 +832,11 @@ type RR_RRSIG struct {
 	Inception   uint32
 	KeyTag      uint16
 	SignerName  string `dns:"domain-name"`
-	Signature   string `dns:"base64"`
+	Signature   string `dns:"base64"` 
+	// Uniquely identifies the key used for the signature creation. This is not part of
+	// the official RRSIG definition, hence the tag 'nowire' which means it should
+	// not be converted to (and from) the wireformat.
+	KeyHashTag  string `dns:"nowire"`
 }
 
 func (rr *RR_RRSIG) Header() *RR_Header {
@@ -857,7 +861,7 @@ func (rr *RR_RRSIG) Len() int {
 }
 
 func (rr *RR_RRSIG) Copy() RR {
-	return &RR_RRSIG{*rr.Hdr.CopyHeader(), rr.TypeCovered, rr.Algorithm, rr.Labels, rr.OrigTtl, rr.Expiration, rr.Inception, rr.KeyTag, rr.SignerName, rr.Signature}
+	return &RR_RRSIG{*rr.Hdr.CopyHeader(), rr.TypeCovered, rr.Algorithm, rr.Labels, rr.OrigTtl, rr.Expiration, rr.Inception, rr.KeyTag, rr.SignerName, rr.Signature, rr.KeyHashTag}
 }
 
 type RR_NSEC struct {
