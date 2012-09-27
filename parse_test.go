@@ -66,6 +66,7 @@ Activate: 20110302104537`
 	sig.KeyTag = k.KeyTag()
 	sig.SignerName = k.Hdr.Name
 	sig.Algorithm = k.Algorithm
+	sig.KeyHashTag = k.HashTag()
 
 	sig.Sign(p, []RR{soa})
 	if sig.Signature != "D5zsobpQcmMmYsUMLxCVEtgAdCvTu8V/IEeP4EyLBjqPJmjt96bwM9kqihsccofA5LIJ7DN91qkCORjWSTwNhzCv7bMyr2o5vBZElrlpnRzlvsFIoAZCD9xg6ZY7ZyzUJmU6IcTwG4v3xEYajcpbJJiyaw/RqR90MuRdKPiBzSo=" {
@@ -107,6 +108,7 @@ PrivateKey: WURgWHCcYIYUPWgeLmiPY2DJJk02vgrmTfitxgqcL4vwW7BOrbawVmVe0d9V94SR`
 	sig.KeyTag = eckey.(*RR_DNSKEY).KeyTag()
 	sig.SignerName = eckey.(*RR_DNSKEY).Hdr.Name
 	sig.Algorithm = eckey.(*RR_DNSKEY).Algorithm
+	sig.KeyHashTag = eckey.(*RR_DNSKEY).HashTag()
 
 	sig.Sign(privkey, []RR{a})
 

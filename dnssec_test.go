@@ -177,6 +177,7 @@ func TestSignVerify(t *testing.T) {
 	sig.KeyTag = key.KeyTag()   // Get the keyfrom the Key
 	sig.SignerName = key.Hdr.Name
 	sig.Algorithm = RSASHA256
+	sig.KeyHashTag = key.HashTag()
 
 	for _, r := range []RR{soa, soa1} {
 		if sig.Sign(privkey, []RR{r}) != nil {
@@ -302,6 +303,7 @@ func TestKeyRSA(t *testing.T) {
 	sig.Inception = 1293942305  // date -u '+%s' -d"2011-01-02 04:25:05"
 	sig.OrigTtl = soa.Hdr.Ttl
 	sig.KeyTag = key.KeyTag()
+	sig.KeyHashTag = key.HashTag()
 	sig.SignerName = key.Hdr.Name
 
 	if err := sig.Sign(priv, []RR{soa}); err != nil {
