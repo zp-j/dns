@@ -417,12 +417,12 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 	defer node.mutex.Unlock()
 
 	do := make(map[*RR_DNSKEY]int)
-	for k, h := range keys {
+	for k, _ := range keys {
 		do[k] = create
 	}
 	now := time.Now().UTC()
 
-	bitmap := make([]uint16)
+	bitmap := make([]uint16, 0)
 	for k, p := range keys {
 		for t, rrset := range node.RR {
 			if config.HonorSepFlag && k.Flags&SEP == SEP {
@@ -439,7 +439,7 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 				case true:
 					if now.Sub(uint32ToTime(sig.Expiration)) < config.Refresh {
 						// needs refreshing
-						newsig, e := sign(rrset, p, k, now, keytags[k], hashtags[k])
+						newsig, e := sign(rrset, p, k, now, keytags[k], hashtags[k], config)
 						if e != nil {
 							return e
 						}
@@ -457,11 +457,11 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 			}
 			for k, what := range do {
 				if what == create {
-					newsig, e := sign(rrset, p, k, now, keytags[k], hashtags[k])
+					newsig, e := sign(rrset, p, k, now, keytags[k], hashtags[k], config)
 					if e != nil {
 						return e
 					}
-					node.Signatures[t][h] = newsig
+					node.Signatures[t][hashtags[k]] = newsig
 				}
 			}
 
@@ -469,11 +469,22 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 	}
 	bitmap = append(bitmap, TypeRRSIG)
 	bitmap = append(bitmap, TypeNSEC)
+	sort.Sort(uint16Slice(bitmap))
+	do := create
 
-			node.Signatures[t] = append(node.Signatures[t], s)
-			nsec.TypeBitMap = append(nsec.TypeBitMap, t)
+	if _, ok := node.RR[TypeNSEC]; !ok {
+		nsec := new(RR_NSEC)
+		nsec.Hdr.Rrtype = TypeNSEC
+		nsec.Hdr.Ttl = config.Minttl // SOA's minimum value
+		nsec.Hdr.Name = node.Name
+		nsec.NextDomain = next.Name // Only thing I need from next, actually
+		nsec.Hdr.Class = ClassINET
+		nsec.TypeBitMap = bitmap
 		node.RR[TypeNSEC] = []RR{nsec}
-		// NSEC
+	}
+	if node.RR[TypeNSEC]
+
+	/*
 		s := new(RR_RRSIG)
 		s.SignerName = k.Hdr.Name
 		s.Hdr.Ttl = k.Hdr.Ttl
@@ -487,11 +498,11 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 			return e
 		}
 		node.Signatures[TypeNSEC] = append(node.Signatures[TypeNSEC], s)
-	}
+	*/
 	return nil
 }
 
-func sign(rrset []RR, p PrivateKey, k *RR_DNSKEY, now time.Time, keytag uint16, hashtag string) (*RR_RRSIG, error) {
+func sign(rrset []RR, p PrivateKey, k *RR_DNSKEY, now time.Time, keytag uint16, hashtag string, config *SignatureConfig) (*RR_RRSIG, error) {
 	s := new(RR_RRSIG)
 	s.SignerName = k.Hdr.Name
 	s.Hdr.Ttl = k.Hdr.Ttl
