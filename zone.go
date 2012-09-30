@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+const (
+	nothing = iota
+	create
+)
+
 // Zone represents a DNS zone. It's safe for concurrent use by 
 // multilpe goroutines.
 type Zone struct {
@@ -88,10 +93,10 @@ func NewZone(origin string) *Zone {
 
 // ZoneData holds all the RRs having their owner name equal to Name.
 type ZoneData struct {
-	Name       string                 // Domain name for this node
-	RR         map[uint16][]RR        // Map of the RR type to the RR
-	Signatures map[uint16][]*RR_RRSIG // DNSSEC signatures for the RRs, stored under type covered
-	NonAuth    bool                   // Always false, except for NSsets that differ from z.Origin
+	Name       string                          // Domain name for this node
+	RR         map[uint16][]RR                 // Map of the RR type to the RR
+	Signatures map[uint16]map[string]*RR_RRSIG // DNSSEC signatures for the RRs, stored under type covered and keyhash
+	NonAuth    bool                            // Always false, except for NSsets that differ from z.Origin
 	mutex      *sync.RWMutex
 }
 
@@ -100,7 +105,7 @@ func NewZoneData(s string) *ZoneData {
 	zd := new(ZoneData)
 	zd.Name = s
 	zd.RR = make(map[uint16][]RR)
-	zd.Signatures = make(map[uint16][]*RR_RRSIG)
+	zd.Signatures = make(map[uint16]map[string]*RR_RRSIG)
 	zd.mutex = new(sync.RWMutex)
 	return zd
 }
@@ -188,7 +193,6 @@ func (z *Zone) Insert(r RR) error {
 		return &Error{Err: "out of zone data", Name: r.Header().Name}
 	}
 
-	// TODO(mg): quick check for doubles?
 	key := toRadixName(r.Header().Name)
 	z.Lock()
 	zd, exact := z.Radix.Find(key)
@@ -203,7 +207,11 @@ func (z *Zone) Insert(r RR) error {
 		switch t := r.Header().Rrtype; t {
 		case TypeRRSIG:
 			sigtype := r.(*RR_RRSIG).TypeCovered
-			zd.Signatures[sigtype] = append(zd.Signatures[sigtype], r.(*RR_RRSIG))
+			keyhash := r.(*RR_RRSIG).KeyHashTag
+			if keyhash == "" {
+				keyhash = r.(*RR_RRSIG).hashTag()	// fake it
+			}
+			zd.Signatures[sigtype][keyhash] = r.(*RR_RRSIG)
 		case TypeNS:
 			// NS records with other names than z.Origin are non-auth
 			if r.Header().Name != z.Origin {
@@ -223,7 +231,11 @@ func (z *Zone) Insert(r RR) error {
 	switch t := r.Header().Rrtype; t {
 	case TypeRRSIG:
 		sigtype := r.(*RR_RRSIG).TypeCovered
-		zd.Value.(*ZoneData).Signatures[sigtype] = append(zd.Value.(*ZoneData).Signatures[sigtype], r.(*RR_RRSIG))
+			keyhash := r.(*RR_RRSIG).KeyHashTag
+			if keyhash == "" {
+				keyhash = r.(*RR_RRSIG).hashTag()	// fake it
+			}
+		zd.Value.(*ZoneData).Signatures[sigtype][keyhash] = r.(*RR_RRSIG)
 	case TypeNS:
 		if r.Header().Name != z.Origin {
 			zd.Value.(*ZoneData).NonAuth = true
@@ -398,92 +410,49 @@ func signerRoutine(wg *sync.WaitGroup, keys map[*RR_DNSKEY]PrivateKey, keytags m
 // For a more complete description see zone.Sign. 
 // NB: as this method has no (direct)
 // access to the zone's SOA record, the SOA's Minttl value should be set in signatureConfig.
-func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keytags map[*RR_DNSKEY]uint16, config *SignatureConfig) error {
+func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keytags map[*RR_DNSKEY]uint16, hashtags [*RR_DNSKEY]string, config *SignatureConfig) error {
 	node.mutex.Lock()
 	defer node.mutex.Unlock()
 
-	nsec := new(RR_NSEC)
-	nsec.Hdr.Rrtype = TypeNSEC
-	nsec.Hdr.Ttl = config.Minttl // SOA's minimum value
-	nsec.Hdr.Name = node.Name
-	nsec.NextDomain = next.Name // Only thing I need from next, actually
-	nsec.Hdr.Class = ClassINET
+	do := make(map[*RR_DNSKEY]int)
+	for k, h := range keys {
+		do[k] = create
+	}
 	now := time.Now().UTC()
 
-	// Still need to add NSEC + RRSIG for this data, there might also be a DS record
-	if node.NonAuth == true {
-		for t, _ := range node.RR {
-			nsec.TypeBitMap = append(nsec.TypeBitMap, t)
-		}
-		nsec.TypeBitMap = append(nsec.TypeBitMap, TypeRRSIG) // Add sig too
-		nsec.TypeBitMap = append(nsec.TypeBitMap, TypeNSEC)  // Add me too!
-		sort.Sort(uint16Slice(nsec.TypeBitMap))
-		node.RR[TypeNSEC] = []RR{nsec}
-
-		for k, p := range keys {
+	for k, p := range keys {
+		for t, rrset := range node.RR {
 			if config.HonorSepFlag && k.Flags&SEP == SEP {
 				// only sign keys with SEP keys
 				continue
 			}
-			for _, sig := range node.Signatures[TypeNSEC] {
-				// there should be one sig with this keytag
-				if sig.KeyTag == keytags[k] {
+
+			for _, sig := range node.Signatures[t] {
+				switch sig.KeyHashTag == hashtags[k] {
+				case true:
 					if now.Sub(uint32ToTime(sig.Expiration)) < config.Refresh {
 						// needs refreshing
-					}
-				}
-			}
+						s := new(RR_RRSIG)
+						s.SignerName = k.Hdr.Name
+						s.Hdr.Ttl = k.Hdr.Ttl
+						s.Algorithm = k.Algorithm
+						s.KeyTag = keytags[k]
+						s.KeyHashTag = hashtags[k]
+						s.Inception = timeToUint32(now.Add(-config.InceptionOffset))
+						s.Expiration = timeToUint32(now.Add(jitterDuration(config.Jitter)).Add(config.Validity))
 
-			// TODO:refactor this a little
-			s := new(RR_RRSIG)
-			s.SignerName = k.Hdr.Name
-			s.Hdr.Ttl = k.Hdr.Ttl
-			s.Algorithm = k.Algorithm
-			s.KeyTag = keytags[k]
-			s.Inception = timeToUint32(now.Add(-config.InceptionOffset))
-			s.Expiration = timeToUint32(now.Add(jitterDuration(config.Jitter)).Add(config.Validity))
-			e := s.Sign(p, []RR{nsec})
-			if e != nil {
-				return e
-			}
-			node.Signatures[TypeNSEC] = append(node.Signatures[TypeNSEC], s)
-			// DS
-			if ds, ok := node.RR[TypeDS]; ok {
-				for _, sig := range node.Signatures[TypeDS] {
-					if sig.KeyTag == keytags[k] {
-						if now.Sub(uint32ToTime(s.Expiration)) < config.Refresh {
-							// needs refreshing
+						e := s.Sign(p, rrset)
+						if e != nil {
+							return e
 						}
 					}
-				}
-				s := new(RR_RRSIG)
-				s.SignerName = k.Hdr.Name
-				s.Hdr.Ttl = k.Hdr.Ttl
-				s.Algorithm = k.Algorithm
-				s.KeyTag = keytags[k]
-				s.Inception = timeToUint32(now.Add(-config.InceptionOffset))
-				s.Expiration = timeToUint32(now.Add(jitterDuration(config.Jitter)).Add(config.Validity))
-				e := s.Sign(p, ds)
-				if e != nil {
-					return e
-				}
-				node.Signatures[TypeDS] = append(node.Signatures[TypeDS], s)
-			}
-		}
-		return nil
-	}
-	for k, p := range keys {
-		for t, rrset := range node.RR {
-			if k.Flags&SEP == SEP {
-				if _, ok := rrset[0].(*RR_DNSKEY); !ok {
-					// only sign keys with SEP keys
-					continue
-				}
-			}
-			for _, sig := range node.Signatures[t] {
-				if sig.KeyTag == keytags[k] {
-					if now.Sub(uint32ToTime(sig.Expiration)) < config.Refresh {
-						// needs refreshing
+					do[k] = nothing
+				default:
+					if _, ok := keys[k]; !ok {
+						// unknown key -- can only delete sig
+						if now.Sub(uint32ToTime(sig.Expiration)) < config.Refresh {
+							// delete signature
+						}
 					}
 				}
 			}

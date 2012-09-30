@@ -147,7 +147,13 @@ func (k *RR_DNSKEY) KeyTag() uint16 {
 func (k *RR_DNSKEY) HashTag() string {
 	// Make a DS and throw away stuff we don't need
 	return k.ToDS(SHA1).Digest
+}
 
+// When a SIG has no official hashtag, we fake one from the base64 signature rdata
+func (r *RR_RRSIG) hashTag() string {
+	s := sha1.New()
+	io.WriteString(s, r.Signature)
+	return hex.EncodeToString(s.Sum(nil))
 }
 
 // ToDS converts a DNSKEY record to a DS record.
