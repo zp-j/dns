@@ -209,7 +209,7 @@ func (z *Zone) Insert(r RR) error {
 			sigtype := r.(*RR_RRSIG).TypeCovered
 			keyhash := r.(*RR_RRSIG).KeyHashTag
 			if keyhash == "" {
-				keyhash = r.(*RR_RRSIG).hashTag()	// fake it
+				keyhash = r.(*RR_RRSIG).hashTag() // fake it
 			}
 			zd.Signatures[sigtype][keyhash] = r.(*RR_RRSIG)
 		case TypeNS:
@@ -231,10 +231,10 @@ func (z *Zone) Insert(r RR) error {
 	switch t := r.Header().Rrtype; t {
 	case TypeRRSIG:
 		sigtype := r.(*RR_RRSIG).TypeCovered
-			keyhash := r.(*RR_RRSIG).KeyHashTag
-			if keyhash == "" {
-				keyhash = r.(*RR_RRSIG).hashTag()	// fake it
-			}
+		keyhash := r.(*RR_RRSIG).KeyHashTag
+		if keyhash == "" {
+			keyhash = r.(*RR_RRSIG).hashTag() // fake it
+		}
 		zd.Value.(*ZoneData).Signatures[sigtype][keyhash] = r.(*RR_RRSIG)
 	case TypeNS:
 		if r.Header().Name != z.Origin {
@@ -344,8 +344,10 @@ func (z *Zone) Sign(keys map[*RR_DNSKEY]PrivateKey, config *SignatureConfig) err
 	}
 	// Pre-calc the key tag
 	keytags := make(map[*RR_DNSKEY]uint16)
+	hashtags := make(map[*RR_DNSKEY]string)
 	for k, _ := range keys {
 		keytags[k] = k.KeyTag()
+		hashtags[k] = k.HashTag()
 	}
 
 	errChan := make(chan error)
@@ -355,7 +357,7 @@ func (z *Zone) Sign(keys map[*RR_DNSKEY]PrivateKey, config *SignatureConfig) err
 	wg := new(sync.WaitGroup)
 	wg.Add(config.SignerRoutines)
 	for i := 0; i < config.SignerRoutines; i++ {
-		go signerRoutine(wg, keys, keytags, config, radChan, errChan)
+		go signerRoutine(wg, keys, keytags, hashtags, config, radChan, errChan)
 	}
 
 	apex, e := z.Radix.Find(toRadixName(z.Origin))
@@ -387,7 +389,7 @@ Sign:
 }
 
 // signerRoutine is a small helper routine to make the concurrent signing work.
-func signerRoutine(wg *sync.WaitGroup, keys map[*RR_DNSKEY]PrivateKey, keytags map[*RR_DNSKEY]uint16, config *SignatureConfig, in chan *radix.Radix, err chan error) {
+func signerRoutine(wg *sync.WaitGroup, keys map[*RR_DNSKEY]PrivateKey, keytags map[*RR_DNSKEY]uint16, hashtags map[*RR_DNSKEY]string, config *SignatureConfig, in chan *radix.Radix, err chan error) {
 	defer wg.Done()
 	for {
 		select {
@@ -395,7 +397,7 @@ func signerRoutine(wg *sync.WaitGroup, keys map[*RR_DNSKEY]PrivateKey, keytags m
 			if !ok {
 				return
 			}
-			e := data.Value.(*ZoneData).Sign(data.Next().Value.(*ZoneData), keys, keytags, config)
+			e := data.Value.(*ZoneData).Sign(data.Next().Value.(*ZoneData), keys, keytags, hashtags, config)
 			if e != nil {
 				err <- e
 				return
@@ -410,7 +412,7 @@ func signerRoutine(wg *sync.WaitGroup, keys map[*RR_DNSKEY]PrivateKey, keytags m
 // For a more complete description see zone.Sign. 
 // NB: as this method has no (direct)
 // access to the zone's SOA record, the SOA's Minttl value should be set in signatureConfig.
-func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keytags map[*RR_DNSKEY]uint16, hashtags [*RR_DNSKEY]string, config *SignatureConfig) error {
+func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keytags map[*RR_DNSKEY]uint16, hashtags map[*RR_DNSKEY]string, config *SignatureConfig) error {
 	node.mutex.Lock()
 	defer node.mutex.Unlock()
 
@@ -426,22 +428,16 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 				// only sign keys with SEP keys
 				continue
 			}
+			if t == TypeNSEC {
+				continue
+			}
 
-			for _, sig := range node.Signatures[t] {
+			for h, sig := range node.Signatures[t] {
 				switch sig.KeyHashTag == hashtags[k] {
 				case true:
 					if now.Sub(uint32ToTime(sig.Expiration)) < config.Refresh {
 						// needs refreshing
-						s := new(RR_RRSIG)
-						s.SignerName = k.Hdr.Name
-						s.Hdr.Ttl = k.Hdr.Ttl
-						s.Algorithm = k.Algorithm
-						s.KeyTag = keytags[k]
-						s.KeyHashTag = hashtags[k]
-						s.Inception = timeToUint32(now.Add(-config.InceptionOffset))
-						s.Expiration = timeToUint32(now.Add(jitterDuration(config.Jitter)).Add(config.Validity))
-
-						e := s.Sign(p, rrset)
+						newsig, e := sign(rrset, p, k, now, keytags[k], hashtags[k])
 						if e != nil {
 							return e
 						}
@@ -455,6 +451,24 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 						}
 					}
 				}
+			}
+			for k, what := range do {
+				if what == create {
+					s := new(RR_RRSIG)
+					s.SignerName = k.Hdr.Name
+					s.Hdr.Ttl = k.Hdr.Ttl
+					s.Algorithm = k.Algorithm
+					s.KeyTag = keytags[k]
+					s.KeyHashTag = hashtags[k]
+					s.Inception = timeToUint32(now.Add(-config.InceptionOffset))
+					s.Expiration = timeToUint32(now.Add(jitterDuration(config.Jitter)).Add(config.Validity))
+
+					e := s.Sign(p, rrset)
+					if e != nil {
+						return e
+					}
+				}
+
 			}
 
 			s := new(RR_RRSIG)
@@ -492,6 +506,19 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 		node.Signatures[TypeNSEC] = append(node.Signatures[TypeNSEC], s)
 	}
 	return nil
+}
+
+func sign(rrset []RR, p PrivateKey, k *RR_DNSKEY, now time.Time, keytag int, hashtag string) (*RR_RRSIG, error) {
+	s := new(RR_RRSIG)
+	s.SignerName = k.Hdr.Name
+	s.Hdr.Ttl = k.Hdr.Ttl
+	s.Algorithm = k.Algorithm
+	s.KeyTag = keytag
+	s.KeyHashTag = hashtag
+	s.Inception = timeToUint32(now.Add(-config.InceptionOffset))
+	s.Expiration = timeToUint32(now.Add(jitterDuration(config.Jitter)).Add(config.Validity))
+	e := s.Sign(p, rrset)
+	return s, e
 }
 
 // timeToUint32 translates a time.Time to a 32 bit value which                      
