@@ -422,6 +422,7 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 	}
 	now := time.Now().UTC()
 
+	bitmap := make([]uint16)
 	for k, p := range keys {
 		for t, rrset := range node.RR {
 			if config.HonorSepFlag && k.Flags&SEP == SEP {
@@ -429,6 +430,7 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 				continue
 			}
 			if t == TypeNSEC {
+				bitmap = append(bitmap, t)
 				continue
 			}
 
@@ -441,54 +443,35 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 						if e != nil {
 							return e
 						}
+						node.Signatures[t][h] = newsig
 					}
 					do[k] = nothing
 				default:
 					if _, ok := keys[k]; !ok {
 						// unknown key -- can only delete sig
 						if now.Sub(uint32ToTime(sig.Expiration)) < config.Refresh {
-							// delete signature
+							delete(node.Signatures[t], h)
 						}
 					}
 				}
 			}
 			for k, what := range do {
 				if what == create {
-					s := new(RR_RRSIG)
-					s.SignerName = k.Hdr.Name
-					s.Hdr.Ttl = k.Hdr.Ttl
-					s.Algorithm = k.Algorithm
-					s.KeyTag = keytags[k]
-					s.KeyHashTag = hashtags[k]
-					s.Inception = timeToUint32(now.Add(-config.InceptionOffset))
-					s.Expiration = timeToUint32(now.Add(jitterDuration(config.Jitter)).Add(config.Validity))
-
-					e := s.Sign(p, rrset)
+					newsig, e := sign(rrset, p, k, now, keytags[k], hashtags[k])
 					if e != nil {
 						return e
 					}
+					node.Signatures[t][h] = newsig
 				}
-
 			}
 
-			s := new(RR_RRSIG)
-			s.SignerName = k.Hdr.Name
-			s.Hdr.Ttl = k.Hdr.Ttl
-			s.Hdr.Class = ClassINET
-			s.Algorithm = k.Algorithm
-			s.KeyTag = keytags[k]
-			s.Inception = timeToUint32(now.Add(-config.InceptionOffset))
-			s.Expiration = timeToUint32(now.Add(jitterDuration(config.Jitter)).Add(config.Validity))
-			e := s.Sign(p, rrset)
-			if e != nil {
-				return e
-			}
+		}
+	}
+	bitmap = append(bitmap, TypeRRSIG)
+	bitmap = append(bitmap, TypeNSEC)
+
 			node.Signatures[t] = append(node.Signatures[t], s)
 			nsec.TypeBitMap = append(nsec.TypeBitMap, t)
-		}
-		nsec.TypeBitMap = append(nsec.TypeBitMap, TypeRRSIG) // Add sig too
-		nsec.TypeBitMap = append(nsec.TypeBitMap, TypeNSEC)  // Add me too!
-		sort.Sort(uint16Slice(nsec.TypeBitMap))
 		node.RR[TypeNSEC] = []RR{nsec}
 		// NSEC
 		s := new(RR_RRSIG)
@@ -508,7 +491,7 @@ func (node *ZoneData) Sign(next *ZoneData, keys map[*RR_DNSKEY]PrivateKey, keyta
 	return nil
 }
 
-func sign(rrset []RR, p PrivateKey, k *RR_DNSKEY, now time.Time, keytag int, hashtag string) (*RR_RRSIG, error) {
+func sign(rrset []RR, p PrivateKey, k *RR_DNSKEY, now time.Time, keytag uint16, hashtag string) (*RR_RRSIG, error) {
 	s := new(RR_RRSIG)
 	s.SignerName = k.Hdr.Name
 	s.Hdr.Ttl = k.Hdr.Ttl
