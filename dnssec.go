@@ -266,7 +266,7 @@ func (rr *RR_RRSIG) Sign(k PrivateKey, rrset []RR) error {
 		h = sha512.New()
 		ch = crypto.SHA512
 	case RSAMD5:
-		fallthrough		// Deprecated in RFC 6725
+		fallthrough // Deprecated in RFC 6725
 	default:
 		return ErrAlg
 	}

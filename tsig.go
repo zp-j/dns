@@ -102,7 +102,6 @@ func (rr *RR_TSIG) Walk(f func(v interface{}, name, tag string) bool) bool {
 		f(&rr.OtherData, "OtherData", "size-hex")
 }
 
-
 // TSIG has no official presentation format, but this will suffice.
 
 func (rr *RR_TSIG) String() string {

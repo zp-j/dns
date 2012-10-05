@@ -337,7 +337,7 @@ func (z *Zone) Sign(keys map[*RR_DNSKEY]PrivateKey, config *SignatureConfig) err
 	}
 
 	errChan := make(chan error)
-	radChan := make(chan *radix.Radix, config.SignerRoutines * 2)
+	radChan := make(chan *radix.Radix, config.SignerRoutines*2)
 
 	// Start the signer goroutines
 	wg := new(sync.WaitGroup)
@@ -520,7 +520,7 @@ func uint32ToTime(t uint32) time.Time {
 		mod = 0
 	}
 	duration := time.Duration((mod * year68) * int64(t))
-	return time.Unix(0,0).Add(duration)
+	return time.Unix(0, 0).Add(duration)
 }
 
 // jitterTime returns a random +/- jitter

@@ -1458,7 +1458,7 @@ func (rr *RR_TKEY) Walk(f func(v interface{}, name, tag string) bool) bool {
 		f(&rr.KeySize, "KeySize", "") &&
 		f(&rr.Key, "Key", "") &&
 		f(&rr.OtherLen, "OtherLen", "") &&
-		f(&rr.OtherData, "OtherData", "")	// shouldn't this be 'size-hex'? Like in TISG?
+		f(&rr.OtherData, "OtherData", "") // shouldn't this be 'size-hex'? Like in TISG?
 }
 
 func (rr *RR_TKEY) String() string {
