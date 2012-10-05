@@ -37,6 +37,8 @@ func (s *saltWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
 	return f(&s.Salt, "Salt", "size-hex")
 }
 
+func (s *saltWireFmt) Header() *RR_Header { return nil }
+
 // HashName hashes a string (label) according to RFC5155. It returns the hashed string.
 func HashName(label string, ha uint8, iter uint16, salt string) string {
 	saltwire := new(saltWireFmt)

@@ -18,7 +18,6 @@ import (
 	"encoding/hex"
 	"math/rand"
 	"net"
-	"reflect"
 	"strconv"
 	"time"
 )
@@ -527,8 +526,6 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 					return false
 				}
 			}
-			//		case reflect.Struct:
-			//			off, ok = packStructValue(fv, msg, off, compression, compress)
 		case *uint8:
 			if off+1 > lenmsg {
 				println("dns: overflow packing uint8")
@@ -592,12 +589,6 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 					println("dns: overflow packing domain-name", off)
 					return false
 				}
-			case "size-base32":
-				// This is purely for NSEC3 atm, the previous byte must
-				// holds the length of the encoded string. As NSEC3
-				// is only defined to SHA1, the hashlength is 20 (160 bits)
-				msg[off-1] = 20
-				fallthrough
 			case "base32":
 				b32, err := packBase32([]byte(s))
 				if err != nil {
@@ -607,12 +598,12 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				copy(msg[off:off+len(b32)], b32)
 				off += len(b32)
 			case "size-hex":
-				fallthrough
+				fallthrough	// when unpacking this is important, when packing we can just fallthrough
 			case "hex":
 				// There is no length encoded here
 				h, e := hex.DecodeString(s)
 				if e != nil {
-					println("dns: overflow packing (size-)hex string")
+					println("dns: overflow packing hex string")
 					return false
 				}
 				if off+hex.DecodedLen(len(s)) > lenmsg {
@@ -621,11 +612,6 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				}
 				copy(msg[off:off+hex.DecodedLen(len(s))], h)
 				off += hex.DecodedLen(len(s))
-			case "size":
-				// the size is already encoded in the RR, we can safely use the 
-				// length of string. String is RAW (not encoded in hex, nor base64)
-				copy(msg[off:off+len(s)], s)
-				off += len(s)
 			case "txt":
 				fallthrough
 			case "":
@@ -662,13 +648,13 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 		case []string:
 			switch tag {
 			case "domain":
-				// HIP record slice of name (or none)
+				// HIP record, a slice of names (or none)
 				servers := make([]string, 0)
 				var s string
 				for off < lenmsg {
 					s, off, ok = UnpackDomainName(msg, off)
 					if !ok {
-						println("dns: failure unpacking domain-name")
+						println("dns: failure unpacking domain")
 						return false
 					}
 					servers = append(servers, s)
@@ -676,7 +662,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				fv = servers
 			case "txt":
 				txt := make([]string, 0)
-				rdlength := off + int(reflect.ValueOf(fv).Elem().FieldByName("Hdr").FieldByName("Rdlength").Uint())
+				rdlength := rdlengthHelper(any)
 			Txts:
 				l := int(msg[off])
 				if off+l+1 > lenmsg {
@@ -692,10 +678,9 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				fv = txt
 			}
 		case []EDNS0:
-			rdlength := int(reflect.ValueOf(fv).Elem().FieldByName("Hdr").FieldByName("Rdlength").Uint())
+			rdlength := rdlengthHelper(any)
 			if rdlength == 0 {
-				// This is an EDNS0 (OPT Record) with no rdata
-				// We can savely return here.
+				// This is an EDNS0 (OPT Record) with no rdata. We can savely return here.
 				break
 			}
 			edns := make([]EDNS0, 0)
@@ -744,7 +729,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 			switch tag {
 			case "wks":
 				// Rest of the record is the bitmap
-				rdlength := int(reflect.ValueOf(fv).Elem().FieldByName("Hdr").FieldByName("Rdlength").Uint())
+				rdlength := rdlengthHelper(any)
 				endrr := rdstart + rdlength
 				serv := make([]uint16, 0)
 				j := 0
@@ -781,7 +766,12 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				fv = serv
 			case "nsec": // NSEC/NSEC3
 				// Rest of the record is the type bitmap
-				rdlength := int(reflect.ValueOf(fv).Elem().FieldByName("Hdr").FieldByName("Rdlength").Uint())
+				rdlength := rdlengthHelper(any)
+				if rdlength == 0 {
+					println("dns: not a nsecx record")
+					return false
+				}
+
 				endrr := rdstart + rdlength
 
 				if off+2 > lenmsg {
@@ -841,11 +831,6 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				}
 				fv = nsec
 			}
-			//		case reflect.Struct:
-			//			off, ok = unpackStructValue(fv, msg, off)
-			//			if val.Type().Field(i).Name == "Hdr" {
-			//				rdstart = off
-			//			}
 		case *uint8:
 			if off+1 > lenmsg {
 				println("dns: overflow unpacking uint8")
@@ -887,7 +872,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				return false
 			case "hex":
 				// Rest of the RR is hex encoded, network order an issue here?
-				rdlength := int(reflect.ValueOf(fv).Elem().FieldByName("Hdr").FieldByName("Rdlength").Uint())
+				rdlength := rdlengthHelper(any)
 				endrr := rdstart + rdlength
 				if endrr > lenmsg {
 					println("dns: overflow when unpacking hex string")
@@ -897,7 +882,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				off = endrr
 			case "base64":
 				// Rest of the RR is base64 encoded value
-				rdlength := int(reflect.ValueOf(fv).Elem().FieldByName("Hdr").FieldByName("Rdlength").Uint())
+				rdlength := rdlengthHelper(any)
 				endrr := rdstart + rdlength
 				if endrr > lenmsg {
 					println("dns: failure unpacking base64")
@@ -913,7 +898,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 					println("dns: failure unpacking domain-name")
 					return false
 				}
-			case "size-base32":
+			case "base32":
 				/*
 				// XXX(mg): This is of course ugly as hell
 				var size int
@@ -926,46 +911,40 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 					}
 				}
 				if off+size > lenmsg {
-					println("dns: failure unpacking size-base32 string")
+					println("dns: failure unpacking base32 string")
 					return false
 				}
 				s = unpackBase32(msg[off : off+size])
 				off += size
 				*/
 			case "size-hex":
-				/*
 				// a "size" string, but it must be encoded in hex in the string
 				var size int
-				switch val.Type().Name() {
-				case "RR_NSEC3":
-					switch val.Type().Field(i).Name {
+				switch t := any.(type) {
+				case *RR_NSEC3:
+					switch name {
 					case "Salt":
-						name := val.FieldByName("SaltLength")
-						size = int(name.Uint())
+						size = int(t.SaltLength)
 					case "NextDomain":
-						name := val.FieldByName("HashLength")
-						size = int(name.Uint())
+						size = int(t.HashLength)
 					}
-				case "RR_TSIG":
-					switch val.Type().Field(i).Name {
+				case *RR_TSIG:
+					switch name {
 					case "MAC":
-						name := val.FieldByName("MACSize")
-						size = int(name.Uint())
+						size = int(t.MACSize)
 					case "OtherData":
-						name := val.FieldByName("OtherLen")
-						size = int(name.Uint())
+						size = int(t.OtherLen)
 					}
 				}
 				if off+size > lenmsg {
 					println("dns: failure unpacking size-hex string")
-					return lenmsg, false
+					return false
 				}
 				s = hex.EncodeToString(msg[off : off+size])
 				off += size
-				*/
 			case "txt":
 				// 1 txt piece
-				rdlength := int(reflect.ValueOf(fv).Elem().FieldByName("Hdr").FieldByName("Rdlength").Uint())
+				rdlength := int(any.Header().Rdlength)
 			Txt:
 				if off >= lenmsg || off+1+int(msg[off]) > lenmsg {
 					println("dns: failure unpacking txt string")
@@ -1381,6 +1360,13 @@ func compressionHelper(c map[string]int, s string) {
 		c[lbs[j]+"."+pref] = 1 + len(pref) + len(lbs[j])
 		pref = lbs[j] + "." + pref
 	}
+}
+
+func rdlengthHelper(any dnsStruct) int {
+	if any.Header() == nil {
+		return 0
+	}
+	return int(any.Header().Rdlength)
 }
 
 // Id return a 16 bits random number to be used as a

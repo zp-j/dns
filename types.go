@@ -125,6 +125,10 @@ type dnsStruct interface {
 	// Whenever f returns false, Walk must stop and return
 	// false, and otherwise return true.
 	Walk(f func(v interface{}, name, tag string) (ok bool)) (ok bool)
+
+	// Header returns the header of an resource record. The header contains
+	// everything up to the rdata.
+	Header() *RR_Header
 }
 
 // The wire format for the DNS packet header.
@@ -133,6 +137,8 @@ type Header struct {
 	Bits                               uint16
 	Qdcount, Ancount, Nscount, Arcount uint16
 }
+
+func (h *Header) Header() *RR_Header { return nil }
 
 func (h *Header) Walk(f func(v interface{}, name, tag string) bool) bool {
 	return f(&h.Id, "Id", "") &&
@@ -163,6 +169,8 @@ type Question struct {
 	Qtype  uint16
 	Qclass uint16
 }
+
+func (q *Question) Header() *RR_Header { return nil }
 
 func (q *Question) Walk(f func(v interface{}, name, tag string) bool) bool {
 	return f(&q.Name, "Name", "domain") &&
@@ -1346,7 +1354,7 @@ type RR_NSEC3 struct {
 	SaltLength uint8
 	Salt       string `dns:"size-hex"`
 	HashLength uint8
-	NextDomain string   `dns:"size-base32"`
+	NextDomain string   `dns:"base32"`
 	TypeBitMap []uint16 `dns:"nsec"`
 }
 

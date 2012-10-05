@@ -98,6 +98,8 @@ func (r *rrsigWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
 		f(&r.SignerName, "SignerName", "domain")
 }
 
+func (r *rrsigWireFmt) Header() *RR_Header { return nil }
+
 // Used for converting DNSKEY's rdata to wirefmt.
 type dnskeyWireFmt struct {
 	Flags     uint16
@@ -113,6 +115,8 @@ func (k *dnskeyWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool 
 		f(&k.Algorithm, "Algorithm", "") &&
 		f(&k.PublicKey, "PublicKey", "base64")
 }
+
+func (r *dnskeyWireFmt) Header() *RR_Header { return nil }
 
 // KeyTag calculates the keytag (or key-id) of the DNSKEY.
 func (k *RR_DNSKEY) KeyTag() uint16 {

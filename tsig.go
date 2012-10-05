@@ -157,6 +157,8 @@ func (t *tsigWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
 		f(&t.OtherData, "OtherData", "size-hex")
 }
 
+func (t *tsigWireFmt) Header() *RR_Header { return nil }
+
 // If we have the MAC use this type to convert it to wiredata.
 // Section 3.4.3. Request MAC
 type macWireFmt struct {
@@ -168,11 +170,15 @@ func (m *macWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
 	return f(&m.MACSize, "MACSize", "") && f(&m.MAC, "MAC", "size-hex")
 }
 
+func (t *macWireFmt) Header() *RR_Header { return nil }
+
 // 3.3. Time values used in TSIG calculations
 type timerWireFmt struct {
 	TimeSigned uint64
 	Fudge      uint16
 }
+
+func (t *timerWireFmt) Header() *RR_Header { return nil }
 
 func (t *timerWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
 	return f(&t.TimeSigned, "TimeSigned", "") && f(&t.Fudge, "Fudge", "")
