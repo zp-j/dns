@@ -1371,7 +1371,7 @@ func (rr *RR_NSEC3) Walk(f func(v interface{}, name, tag string) bool) bool {
 		f(&rr.Salt, "Salt", "size-hex") &&
 		f(&rr.HashLength, "HashLength", "") &&
 		f(&rr.NextDomain, "NextDomain", "size-base32") &&
-		f(&rr.TypeBitMap, "TypeBitMap", "nsec")
+		f(rr.TypeBitMap, "TypeBitMap", "nsec")
 }
 
 func (rr *RR_NSEC3) String() string {
@@ -1669,7 +1669,7 @@ func (rr *RR_WKS) Walk(f func(v interface{}, name, tag string) bool) bool {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Address, "Address", "a") &&
 		f(&rr.Protocol, "Protocol", "") &&
-		f(&rr.BitMap, "BitMap", "wks")
+		f(rr.BitMap, "BitMap", "wks")
 }
 
 func (rr *RR_WKS) String() string {
