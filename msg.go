@@ -1364,6 +1364,7 @@ func compressionHelper(c map[string]int, s string) {
 
 func rdlengthHelper(any dnsStruct) int {
 	if any.Header() == nil {
+		println("dns: rdlength helper returning 0")
 		return 0
 	}
 	return int(any.Header().Rdlength)
