@@ -893,7 +893,7 @@ func (rr *RR_AAAA) Header() *RR_Header {
 }
 
 func (rr *RR_AAAA) Walk(f func(v interface{}, name, tag string) bool) bool {
-	return rr.Hdr.Walk(f) && f(rr.AAAA, "AAAA", "aaaa")
+	return rr.Hdr.Walk(f) && f(&rr.AAAA, "AAAA", "aaaa")
 }
 
 func (rr *RR_AAAA) String() string {
