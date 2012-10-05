@@ -580,7 +580,6 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				copy(msg[off:off+len(b64)], b64)
 				off += len(b64)
 			case "domain":
-				println(off, len(msg), s)
 				if off, ok = PackDomainName(s, msg, off, compression, false && compress); !ok {
 					println("dns: overflow packing domain-name", off)
 					return false
