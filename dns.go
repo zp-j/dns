@@ -119,6 +119,7 @@ type RR interface {
 	Len() int
 	// Copy returns a copy of the RR
 	Copy() RR
+	dnsStruct
 }
 
 // DNS resource records.
@@ -134,6 +135,14 @@ type RR_Header struct {
 
 func (h *RR_Header) Header() *RR_Header {
 	return h
+}
+
+func (h *RR_Header) Walk(f func(v interface{}, name, tag string) bool) bool {
+	return f(&h.Name, "Name", "domain") &&
+		f(&h.Rrtype, "Rrtype", "") &&
+		f(&h.Class, "Class", "") &&
+		f(&h.Ttl, "Ttl", "") &&
+		f(&h.Rdlength, "Rdlength", "")
 }
 
 func (h *RR_Header) CopyHeader() *RR_Header {
