@@ -159,7 +159,7 @@ const (
 
 // DNS queries.
 type Question struct {
-	Name   string `dns:"cdomain-name"` // "cdomain-name" specifies encoding (and may be compressed)
+	Name   string `dns:"cdomain"` // "cdomain" specifies encoding (and may be compressed)
 	Qtype  uint16
 	Qclass uint16
 }
@@ -223,7 +223,7 @@ func (rr *RR_ANY) Copy() RR {
 
 type RR_CNAME struct {
 	Hdr    RR_Header
-	Target string `dns:"cdomain-name"`
+	Target string `dns:"cdomain"`
 }
 
 func (rr *RR_CNAME) Header() *RR_Header {
@@ -231,7 +231,7 @@ func (rr *RR_CNAME) Header() *RR_Header {
 }
 
 func (rr *RR_CNAME) Walk(f func(v interface{}, name, tag string) bool) bool {
-	return rr.Hdr.Walk(f) && f(&rr.Cname, "Cname", "cdomain-name")
+	return rr.Hdr.Walk(f) && f(&rr.Cname, "Cname", "cdomain")
 }
 
 func (rr *RR_CNAME) String() string {
@@ -719,7 +719,7 @@ func (rr *RR_SRV) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *dnsRR_SRV) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_SRV) Walk(f func(v interface{}, name, tag string) bool) bool {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Priority, "Priority", "") &&
 		f(&rr.Weight, "Weight", "") &&

@@ -50,6 +50,10 @@ func (rr *RR_OPT) Header() *RR_Header {
 	return &rr.Hdr
 }
 
+func (rr *RR_OPT) Walk(f func(v interface{}, name, tag string) bool) bool {
+	return rr.Hdr.Walk(f) && f(rr.Option, "Option", "opt")
+}
+
 func (rr *RR_OPT) String() string {
 	s := "\n;; OPT PSEUDOSECTION:\n; EDNS: version " + strconv.Itoa(int(rr.Version())) + "; "
 	if rr.Do() {
