@@ -371,6 +371,7 @@ Loop:
 
 // PackStruct packs a dnsStruct to a msg. 
 func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, compress bool) (off1 int, ok bool) {
+	println("length", len(msg))
 	ok = any.Walk(func(field interface{}, name, tag string) bool {
 		lenmsg := len(msg)
 		switch fv := field.(type) {
@@ -419,31 +420,31 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				copy(msg[off:off+len(b)], b)
 				off += len(b)
 			}
-		case net.IP:
+		case *net.IP:
 			switch tag {
 			case "a":
 				// It must be a slice of 4, even if it is 16, we encode
 				// only the first 4
-				switch len(fv) {
+				switch len(*fv) {
 				case net.IPv6len:
 					if off+net.IPv4len > lenmsg {
 						println("dns: overflow packing A", off, lenmsg)
 						return false
 					}
-					msg[off] = byte(fv[12])
-					msg[off+1] = byte(fv[13])
-					msg[off+2] = byte(fv[14])
-					msg[off+3] = byte(fv[15])
+					msg[off] = byte((*fv)[12])
+					msg[off+1] = byte((*fv)[13])
+					msg[off+2] = byte((*fv)[14])
+					msg[off+3] = byte((*fv)[15])
 					off += net.IPv4len
 				case net.IPv4len:
 					if off+net.IPv4len > lenmsg {
 						println("dns: overflow packing A", off, lenmsg)
 						return false
 					}
-					msg[off] = byte(fv[0])
-					msg[off+1] = byte(fv[1])
-					msg[off+2] = byte(fv[2])
-					msg[off+3] = byte(fv[3])
+					msg[off] = byte((*fv)[0])
+					msg[off+1] = byte((*fv)[1])
+					msg[off+2] = byte((*fv)[2])
+					msg[off+3] = byte((*fv)[3])
 					off += net.IPv4len
 				case 0:
 					// Allowed, for dynamic updates
@@ -452,13 +453,13 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 					return false
 				}
 			case "aaaa":
-				if len(fv) > net.IPv6len || off+len(fv) > lenmsg {
+				if len(*fv) > net.IPv6len || off+len(*fv) > lenmsg {
 					println("dns: overflow packing AAAA")
 					return false
 				}
 
 				for j := 0; j < net.IPv6len; j++ {
-					msg[off] = byte(fv[j])
+					msg[off] = byte((*fv)[j])
 					off++
 				}
 			}
@@ -580,6 +581,7 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				copy(msg[off:off+len(b64)], b64)
 				off += len(b64)
 			case "domain":
+				println(off, len(msg), s)
 				if off, ok = PackDomainName(s, msg, off, compression, false && compress); !ok {
 					println("dns: overflow packing domain-name", off)
 					return false
@@ -706,21 +708,21 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				off = off1 + int(optlen)
 			}
 			fv = edns
-		case net.IP:
+		case *net.IP:
 			switch tag {
 			case "a":
 				if off+net.IPv4len > len(msg) {
 					println("dns: overflow unpacking A")
 					return false
 				}
-				fv = net.IPv4(msg[off], msg[off+1], msg[off+2], msg[off+3])
+				*fv = net.IPv4(msg[off], msg[off+1], msg[off+2], msg[off+3])
 				off += net.IPv4len
 			case "aaaa":
 				if off+net.IPv6len > lenmsg {
 					println("dns: overflow unpacking AAAA")
 					return false
 				}
-				fv = net.IP{msg[off], msg[off+1], msg[off+2], msg[off+3], msg[off+4],
+				*fv = net.IP{msg[off], msg[off+1], msg[off+2], msg[off+3], msg[off+4],
 					msg[off+5], msg[off+6], msg[off+7], msg[off+8], msg[off+9], msg[off+10],
 					msg[off+11], msg[off+12], msg[off+13], msg[off+14], msg[off+15]}
 				off += net.IPv6len

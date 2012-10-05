@@ -46,7 +46,7 @@ func TestPackUnpack(t *testing.T) {
 
 func TestPackUnpack2(t *testing.T) {
 	m := new(Msg)
-	m.Extra = make([]RR, 1)
+//	m.Extra = make([]RR, 1)
 	m.Answer = make([]RR, 1)
 	dom := "miek.nl."
 	rr := new(RR_A)
@@ -57,7 +57,7 @@ func TestPackUnpack2(t *testing.T) {
 	x.Hdr = RR_Header{Name: dom, Rrtype: TypeTXT, Class: ClassINET, Ttl: 0}
 	x.Txt = []string{"heelalaollo"}
 
-	m.Extra[0] = x
+//	m.Extra[0] = x
 	m.Answer[0] = rr
 	_, ok := m.Pack()
 	if !ok {
