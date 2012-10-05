@@ -883,7 +883,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 			var s string
 			switch tag {
 			default:
-				println("dns: unknown tag unpacking string")
+				println("dns: unknown tag unpacking string", tag)
 				return false
 			case "hex":
 				// Rest of the RR is hex encoded, network order an issue here?
@@ -905,9 +905,9 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				}
 				s = unpackBase64(msg[off:endrr])
 				off = endrr
-			case "cdomain-name":
+			case "cdomain":
 				fallthrough
-			case "domain-name":
+			case "domain":
 				s, off, ok = UnpackDomainName(msg, off)
 				if !ok {
 					println("dns: failure unpacking domain-name")

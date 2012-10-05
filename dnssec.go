@@ -83,7 +83,7 @@ type rrsigWireFmt struct {
 	Expiration  uint32
 	Inception   uint32
 	KeyTag      uint16
-	SignerName  string `dns:"domain-name"`
+	SignerName  string `dns:"domain"`
 	/* No Signature */
 }
 

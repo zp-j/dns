@@ -126,7 +126,7 @@ type RR interface {
 // There are many types of RRs,
 // but they all share the same header.
 type RR_Header struct {
-	Name     string `dns:"cdomain-name"`
+	Name     string `dns:"cdomain"`
 	Rrtype   uint16
 	Class    uint16
 	Ttl      uint32
