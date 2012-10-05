@@ -371,7 +371,6 @@ Loop:
 
 // PackStruct packs a dnsStruct to a msg. 
 func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, compress bool) (off1 int, ok bool) {
-	println("length", len(msg))
 	ok = any.Walk(func(field interface{}, name, tag string) bool {
 		lenmsg := len(msg)
 		switch fv := field.(type) {
@@ -1366,7 +1365,6 @@ func compressionHelper(c map[string]int, s string) {
 
 func rdlengthHelper(any dnsStruct) int {
 	if any.Header() == nil {
-		println("dns: rdlength helper returning 0")
 		return 0
 	}
 	return int(any.Header().Rdlength)
