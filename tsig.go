@@ -74,7 +74,7 @@ const (
 
 type RR_TSIG struct {
 	Hdr        RR_Header
-	Algorithm  string `dns:"domain-name"`
+	Algorithm  string `dns:"domain"`
 	TimeSigned uint64
 	Fudge      uint16
 	MACSize    uint16
@@ -88,6 +88,20 @@ type RR_TSIG struct {
 func (rr *RR_TSIG) Header() *RR_Header {
 	return &rr.Hdr
 }
+
+func (rr *RR_TSIG) Walk(f func(v interface{}, name, tag string) bool) bool {
+	return rr.Hdr.Walk(f) &&
+		f(&rr.Algorithm, "Algorithm", "domain") &&
+		f(&rr.TimeSigned, "TimeSigned", "") &&
+		f(&rr.Fudge, "Fudge", "") &&
+		f(&rr.MACSize, "MACSize", "") &&
+		f(&rr.MAC, "MAC", "size-hex") &&
+		f(&rr.OrigId, "OrigId", "") &&
+		f(&rr.Error, "Error", "") &&
+		f(&rr.OtherLen, "OtherLen", "") &&
+		f(&rr.OtherData, "OtherData", "size-hex")
+}
+
 
 // TSIG has no official presentation format, but this will suffice.
 

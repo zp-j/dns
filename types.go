@@ -231,7 +231,7 @@ func (rr *RR_CNAME) Header() *RR_Header {
 }
 
 func (rr *RR_CNAME) Walk(f func(v interface{}, name, tag string) bool) bool {
-	return rr.Hdr.Walk(f) && f(&rr.Cname, "Cname", "cdomain")
+	return rr.Hdr.Walk(f) && f(&rr.Target, "Target", "cdomain")
 }
 
 func (rr *RR_CNAME) String() string {
@@ -1082,7 +1082,7 @@ func (rr *RR_DS) Header() *RR_Header {
 
 func (rr *RR_DS) Walk(f func(v interface{}, name, tag string) bool) bool {
 	return rr.Hdr.Walk(f) &&
-		f(&rr.Keytag, "Keytag", "") &&
+		f(&rr.KeyTag, "KeyTag", "") &&
 		f(&rr.Algorithm, "Algorithm", "") &&
 		f(&rr.DigestType, "DigestType", "") &&
 		f(&rr.Digest, "Digest", "hex")
@@ -1117,7 +1117,7 @@ func (rr *RR_DLV) Header() *RR_Header {
 
 func (rr *RR_DLV) Walk(f func(v interface{}, name, tag string) bool) bool {
 	return rr.Hdr.Walk(f) &&
-		f(&rr.Keytag, "Keytag", "") &&
+		f(&rr.KeyTag, "KeyTag", "") &&
 		f(&rr.Algorithm, "Algorithm", "") &&
 		f(&rr.DigestType, "DigestType", "") &&
 		f(&rr.Digest, "Digest", "hex")
@@ -1181,7 +1181,7 @@ func (rr *RR_TA) Header() *RR_Header {
 
 func (rr *RR_TA) Walk(f func(v interface{}, name, tag string) bool) bool {
 	return rr.Hdr.Walk(f) &&
-		f(&rr.Keytag, "Keytag", "") &&
+		f(&rr.KeyTag, "KeyTag", "") &&
 		f(&rr.Algorithm, "Algorithm", "") &&
 		f(&rr.DigestType, "DigestType", "") &&
 		f(&rr.Digest, "Digest", "hex")
@@ -1458,7 +1458,7 @@ func (rr *RR_TKEY) Walk(f func(v interface{}, name, tag string) bool) bool {
 		f(&rr.KeySize, "KeySize", "") &&
 		f(&rr.Key, "Key", "") &&
 		f(&rr.OtherLen, "OtherLen", "") &&
-		f(&rr.OtherData, "OtherData", "")
+		f(&rr.OtherData, "OtherData", "")	// shouldn't this be 'size-hex'? Like in TISG?
 }
 
 func (rr *RR_TKEY) String() string {
