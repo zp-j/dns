@@ -120,7 +120,7 @@ type dnsStruct interface {
 	// with a reference to that field, the name of the field
 	// and a tag ("", "domain", "ipv4", "ipv6") specifying
 	// particular encodings. Possible concrete types
-	// for v are *uint16, *uint32, *string, or []byte, and
+	// for v are *uint16, *uint32, *string, or []uint16, and
 	// *int, *bool in the case of dnsMsgHdr.
 	// Whenever f returns false, Walk must stop and return
 	// false, and otherwise return true.

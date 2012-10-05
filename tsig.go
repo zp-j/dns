@@ -132,17 +132,29 @@ func (rr *RR_TSIG) Copy() RR {
 // RFC 2845, section 3.4.2. TSIG Variables.
 type tsigWireFmt struct {
 	// From RR_Header
-	Name  string `dns:"domain-name"`
+	Name  string `dns:"domain"`
 	Class uint16
 	Ttl   uint32
 	// Rdata of the TSIG
-	Algorithm  string `dns:"domain-name"`
+	Algorithm  string `dns:"domain"`
 	TimeSigned uint64
 	Fudge      uint16
 	// MACSize, MAC and OrigId excluded
 	Error     uint16
 	OtherLen  uint16
 	OtherData string `dns:"size-hex"`
+}
+
+func (t *tsigWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
+	return f(&t.Name, "Name", "domain") &&
+		f(&t.Class, "Class", "") &&
+		f(&t.Ttl, "Ttl", "") &&
+		f(&t.Algorithm, "Algorithm", "domain") &&
+		f(&t.TimeSigned, "TimeSigned", "") &&
+		f(&t.Fudge, "Fudge", "") &&
+		f(&t.Error, "Error", "") &&
+		f(&t.OtherLen, "OtherLen", "") &&
+		f(&t.OtherData, "OtherData", "size-hex")
 }
 
 // If we have the MAC use this type to convert it to wiredata.
@@ -152,10 +164,18 @@ type macWireFmt struct {
 	MAC     string `dns:"size-hex"`
 }
 
+func (m *macWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
+	return f(&m.MACSize, "MACSize", "") && f(&m.MAC, "MAC", "size-hex")
+}
+
 // 3.3. Time values used in TSIG calculations
 type timerWireFmt struct {
 	TimeSigned uint64
 	Fudge      uint16
+}
+
+func (t *timerWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
+	return f(&t.TimeSigned, "TimeSigned", "") && f(&t.Fudge, "Fudge", "")
 }
 
 // TsigGenerate fills out the TSIG record attached to the message.
@@ -271,7 +291,7 @@ func tsigBuffer(msgbuf []byte, rr *RR_TSIG, requestMAC string, timersOnly bool) 
 		m.MACSize = uint16(len(requestMAC) / 2)
 		m.MAC = requestMAC
 		buf = make([]byte, len(requestMAC)) // long enough
-		n, _ := PackStruct(m, buf, 0)
+		n, _ := PackStruct(m, buf, 0, nil, false)
 		buf = buf[:n]
 	}
 
@@ -280,7 +300,7 @@ func tsigBuffer(msgbuf []byte, rr *RR_TSIG, requestMAC string, timersOnly bool) 
 		tsig := new(timerWireFmt)
 		tsig.TimeSigned = rr.TimeSigned
 		tsig.Fudge = rr.Fudge
-		n, _ := PackStruct(tsig, tsigvar, 0)
+		n, _ := PackStruct(tsig, tsigvar, 0, nil, false)
 		tsigvar = tsigvar[:n]
 	} else {
 		tsig := new(tsigWireFmt)
@@ -293,7 +313,7 @@ func tsigBuffer(msgbuf []byte, rr *RR_TSIG, requestMAC string, timersOnly bool) 
 		tsig.Error = rr.Error
 		tsig.OtherLen = rr.OtherLen
 		tsig.OtherData = rr.OtherData
-		n, _ := PackStruct(tsig, tsigvar, 0)
+		n, _ := PackStruct(tsig, tsigvar, 0, nil, false)
 		tsigvar = tsigvar[:n]
 	}
 

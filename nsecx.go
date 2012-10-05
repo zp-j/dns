@@ -33,12 +33,16 @@ type saltWireFmt struct {
 	Salt string `dns:"size-hex"`
 }
 
+func (s *saltWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool { 
+	return f(&s.Salt, "Salt", "size-hex")
+}
+
 // HashName hashes a string (label) according to RFC5155. It returns the hashed string.
 func HashName(label string, ha uint8, iter uint16, salt string) string {
 	saltwire := new(saltWireFmt)
 	saltwire.Salt = salt
 	wire := make([]byte, DefaultMsgSize)
-	n, ok := PackStruct(saltwire, wire, 0)
+	n, ok := PackStruct(saltwire, wire, 0, nil, false)
 	if !ok {
 		return ""
 	}

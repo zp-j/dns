@@ -87,6 +87,17 @@ type rrsigWireFmt struct {
 	/* No Signature */
 }
 
+func (r *rrsigWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
+	return f(&r.TypeCovered, "TypeCovered", "") &&
+		f(&r.Algorithm, "Algorithm", "") &&
+		f(&r.Labels, "Labels", "") &&
+		f(&r.OrigTtl, "OrigTtl", "") &&
+		f(&r.Expiration, "Expiration", "") &&
+		f(&r.Inception, "Inception", "") &&
+		f(&r.KeyTag, "KeyTag", "") &&
+		f(&r.SignerName, "SignerName", "domain")
+}
+
 // Used for converting DNSKEY's rdata to wirefmt.
 type dnskeyWireFmt struct {
 	Flags     uint16
@@ -94,6 +105,13 @@ type dnskeyWireFmt struct {
 	Algorithm uint8
 	PublicKey string `dns:"base64"`
 	/* Nothing is left out */
+}
+
+func (k *dnskeyWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
+	return f(&k.Flags, "Flags", "") &&
+		f(&k.Protocol, "Protocol", "") &&
+		f(&k.Algorithm, "Algorithm", "") &&
+		f(&k.PublicKey, "PublicKey", "base64")
 }
 
 // KeyTag calculates the keytag (or key-id) of the DNSKEY.
@@ -119,7 +137,7 @@ func (k *RR_DNSKEY) KeyTag() uint16 {
 		keywire.Algorithm = k.Algorithm
 		keywire.PublicKey = k.PublicKey
 		wire := make([]byte, DefaultMsgSize)
-		n, ok := PackStruct(keywire, wire, 0)
+		n, ok := PackStruct(keywire, wire, 0, nil, false)
 		if !ok {
 			return 0
 		}
@@ -157,7 +175,7 @@ func (k *RR_DNSKEY) ToDS(h int) *RR_DS {
 	keywire.Algorithm = k.Algorithm
 	keywire.PublicKey = k.PublicKey
 	wire := make([]byte, DefaultMsgSize)
-	n, ok := PackStruct(keywire, wire, 0)
+	n, ok := PackStruct(keywire, wire, 0, nil, false)
 	if !ok {
 		return nil
 	}
@@ -237,7 +255,7 @@ func (rr *RR_RRSIG) Sign(k PrivateKey, rrset []RR) error {
 
 	// Create the desired binary blob
 	signdata := make([]byte, DefaultMsgSize)
-	n, ok := PackStruct(sigwire, signdata, 0)
+	n, ok := PackStruct(sigwire, signdata, 0, nil, false)
 	if !ok {
 		return ErrPack
 	}
@@ -349,7 +367,7 @@ func (rr *RR_RRSIG) Verify(k *RR_DNSKEY, rrset []RR) error {
 	sigwire.SignerName = strings.ToLower(rr.SignerName)
 	// Create the desired binary blob
 	signeddata := make([]byte, DefaultMsgSize)
-	n, ok := PackStruct(sigwire, signeddata, 0)
+	n, ok := PackStruct(sigwire, signeddata, 0, nil, false)
 	if !ok {
 		return ErrPack
 	}
