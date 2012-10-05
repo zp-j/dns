@@ -651,7 +651,7 @@ func (rr *RR_TXT) Header() *RR_Header {
 }
 
 func (rr *RR_TXT) Walk(f func(v interface{}, name, tag string) bool) bool {
-	return rr.Hdr.Walk(f) && f(&rr.Txt, "Txt", "txt")
+	return rr.Hdr.Walk(f) && f(rr.Txt, "Txt", "txt")
 }
 
 func (rr *RR_TXT) String() string {
@@ -688,7 +688,7 @@ func (rr *RR_SPF) Header() *RR_Header {
 }
 
 func (rr *RR_SPF) Walk(f func(v interface{}, name, tag string) bool) bool {
-	return rr.Hdr.Walk(f) && f(&rr.Txt, "Txt", "txt")
+	return rr.Hdr.Walk(f) && f(rr.Txt, "Txt", "txt")
 }
 
 func (rr *RR_SPF) String() string {
