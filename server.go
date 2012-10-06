@@ -469,9 +469,8 @@ func (w *response) WriteBuf(m []byte) (err error) {
 		if len(m) > MaxMsgSize {
 			return ErrBuf
 		}
-		l := make([]byte, 2)
-		l[0], l[1] = packUint16(uint16(len(m)))
-		n, err := w.conn._TCP.Write(l)
+		b1, b2 := packUint16(uint16(len(m)))
+		n, err := w.conn._TCP.Write([]byte{b1, b2})
 		if err != nil {
 			return err
 		}
