@@ -33,7 +33,7 @@ type saltWireFmt struct {
 	Salt string `dns:"size-hex"`
 }
 
-func (s *saltWireFmt) Walk(f func(v interface{}, name, tag string) error) error { 
+func (s *saltWireFmt) Walk(f func(v interface{}, name, tag string) error) error {
 	return f(&s.Salt, "Salt", "size-hex")
 }
 

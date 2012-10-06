@@ -158,7 +158,7 @@ func (w *reply) receive() (*Msg, error) {
 		return nil, err
 	}
 	p = p[:n]
-	if err := m.Unpack(p); err != nil  {
+	if err := m.Unpack(p); err != nil {
 		return nil, err
 	}
 	w.rtt = time.Since(w.t)
