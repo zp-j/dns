@@ -43,6 +43,7 @@ func TestServing(t *testing.T) {
 		t.Log("failure", e.Error())
 		t.Fail()
 	} else {
+		t.Logf("%s\n", r.Extra[0])
 		txt := r.Extra[0].(*RR_TXT).Txt[0]
 		if txt != "Hello world" {
 			t.Log("Unexpected result for miek.nl", txt, "!= Hello world")

@@ -666,7 +666,7 @@ func (rr *RR_TXT) Header() *RR_Header {
 }
 
 func (rr *RR_TXT) Walk(f func(v interface{}, name, tag string) error) error {
-	return andErr(rr.Hdr.Walk(f), f(rr.Txt, "Txt", "txt"))
+	return andErr(rr.Hdr.Walk(f), f(&rr.Txt, "Txt", "txt"))
 }
 
 func (rr *RR_TXT) String() string {
@@ -703,7 +703,7 @@ func (rr *RR_SPF) Header() *RR_Header {
 }
 
 func (rr *RR_SPF) Walk(f func(v interface{}, name, tag string) error) error {
-	return andErr(rr.Hdr.Walk(f), f(rr.Txt, "Txt", "txt"))
+	return andErr(rr.Hdr.Walk(f), f(&rr.Txt, "Txt", "txt"))
 }
 
 func (rr *RR_SPF) String() string {
@@ -1641,7 +1641,7 @@ func (rr *RR_HIP) Walk(f func(v interface{}, name, tag string) error) error {
 		f(&rr.PublicKeyLength, "PublicKeyLength", ""),
 		f(&rr.Hit, "Hit", "hex"),
 		f(&rr.PublicKey, "PublicKey", "base64"),
-		f(rr.RendezvousServers, "RendezvousServers", "domain"))
+		f(&rr.RendezvousServers, "RendezvousServers", "domain"))
 }
 
 func (rr *RR_HIP) String() string {

@@ -19,9 +19,10 @@ func TestPackUnpack(t *testing.T) {
 		t.Log("Failed to pack msg with DNSKEY", err.Error())
 		t.Fail()
 	}
+	t.Logf("%d %s\n", len(msg), out.String())
 	in := new(Msg)
-	if in.Unpack(msg) != nil {
-		t.Log("Failed to unpack msg with DNSKEY")
+	if e := in.Unpack(msg); e != nil {
+		t.Log("Failed to unpack msg with DNSKEY", e.Error())
 		t.Fail()
 	}
 

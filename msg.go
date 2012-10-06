@@ -379,18 +379,18 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 		switch fv := field.(type) {
 		default:
 			return ErrTag
-		case []string:
+		case *[]string:
 			switch tag {
 			case "domain":
-				for j := 0; j < len(fv); j++ {
-					off, err = PackDomainName(fv[j], msg, off, compression, false && compress)
+				for j := 0; j < len(*fv); j++ {
+					off, err = PackDomainName((*fv)[j], msg, off, compression, false && compress)
 					if err != nil {
 						return err
 					}
 				}
 			case "txt":
-				for j := 0; j < len(fv); j++ {
-					element := fv[j]
+				for j := 0; j < len(*fv); j++ {
+					element := (*fv)[j]
 					le := len(element)
 					// Counted string: 1 byte length.
 					if le > 255 || off+1+le > lenmsg {
@@ -626,7 +626,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 		switch fv := field.(type) {
 		default:
 			return ErrTag
-		case []string:
+		case *[]string:
 			switch tag {
 			case "domain":
 				// HIP record, a slice of names (or none)
@@ -639,7 +639,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 					}
 					servers = append(servers, s)
 				}
-				fv = servers
+				*fv = servers
 			case "txt":
 				txt := make([]string, 0)
 				rdlength := rdlengthHelper(any)
@@ -654,7 +654,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 					// More
 					goto Txts
 				}
-				fv = txt
+				*fv = txt
 			}
 		case []EDNS0:
 			rdlength := rdlengthHelper(any)
