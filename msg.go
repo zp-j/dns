@@ -623,7 +623,6 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 	lenmsg := len(msg)
 	err = any.Walk(func(field interface{}, name, tag string) error {
-		var rdstart int
 		switch fv := field.(type) {
 		default:
 			return ErrTag
@@ -707,7 +706,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 			case "wks":
 				// Rest of the record is the bitmap
 				rdlength := rdlengthHelper(any)
-				endrr := rdstart + rdlength
+				endrr := off + rdlength
 				serv := make([]uint16, 0)
 				j := 0
 				for off < endrr {
@@ -747,7 +746,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 				if rdlength == 0 {
 					return ErrFmt
 				}
-				endrr := rdstart + rdlength
+				endrr := off + rdlength
 				if off+2 > lenmsg {
 					return ErrShortBuf
 				}
@@ -839,7 +838,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 			case "hex":
 				// Rest of the RR is hex encoded, network order an issue here?
 				rdlength := rdlengthHelper(any)
-				endrr := rdstart + rdlength
+				endrr := off + rdlength
 				if endrr > lenmsg {
 					return ErrShortBuf
 				}
@@ -848,7 +847,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 			case "base64":
 				// Rest of the RR is base64 encoded value
 				rdlength := rdlengthHelper(any)
-				endrr := rdstart + rdlength
+				endrr := off + rdlength
 				if endrr > lenmsg {
 					return ErrShortBuf
 				}
@@ -862,24 +861,18 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 					return err
 				}
 			case "base32":
-				/*
-					// XXX(mg): This is of course ugly as hell
-					var size int
-					switch reflect.ValueOf(fv).Elem().Type().Name() {
-					case "RR_NSEC3":
-						switch reflect.ValueOf(fv).Elem().Type().Field(i).Name {
-						case "NextDomain":
-							name := val.FieldByName("HashLength")
-							size = int(name.Uint())
+				switch t := any.(type) {
+				case *RR_NSEC3:
+					switch name {
+					case "NextDomain":
+						size := int(t.HashLength)
+						if off+size > lenmsg {
+							return ErrShortBuf
 						}
+						s = unpackBase32(msg[off : off+size])
+						off += size
 					}
-					if off+size > lenmsg {
-						println("dns: failure unpacking base32 string")
-						return false
-					}
-					s = unpackBase32(msg[off : off+size])
-					off += size
-				*/
+				}
 			case "size-hex":
 				// a "size" string, but it must be encoded in hex in the string
 				var size int
