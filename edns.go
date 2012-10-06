@@ -51,6 +51,8 @@ func (rr *RR_OPT) Header() *RR_Header {
 }
 
 func (rr *RR_OPT) Walk(f func(v interface{}, name, tag string) error) error {
+	var e error
+	e = rr.Hdr.Walk(f
 	return rr.Hdr.Walk(f) && f(rr.Option, "Option", "opt")
 }
 
