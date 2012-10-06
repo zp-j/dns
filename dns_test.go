@@ -14,13 +14,13 @@ func TestPackUnpack(t *testing.T) {
 	key.PublicKey = "AwEAAaHIwpx3w4VHKi6i1LHnTaWeHCL154Jug0Rtc9ji5qwPXpBo6A5sRv7cSsPQKPIwxLpyCrbJ4mr2L0EPOdvP6z6YfljK2ZmTbogU9aSU2fiq/4wjxbdkLyoDVgtO+JsxNN4bjr4WcWhsmk1Hg93FV9ZpkWb0Tbad8DFqNDzr//kZ"
 
 	out.Answer[0] = key
-	msg, ok := out.Pack()
-	if !ok {
-		t.Log("Failed to pack msg with DNSKEY")
+	msg, err := out.Pack()
+	if err != nil {
+		t.Log("Failed to pack msg with DNSKEY", err.Error())
 		t.Fail()
 	}
 	in := new(Msg)
-	if !in.Unpack(msg) {
+	if in.Unpack(msg) != nil {
 		t.Log("Failed to unpack msg with DNSKEY")
 		t.Fail()
 	}
@@ -32,13 +32,13 @@ func TestPackUnpack(t *testing.T) {
 	sig.Hdr = RR_Header{Name: "miek.nl.", Rrtype: TypeRRSIG, Class: ClassINET, Ttl: 3600}
 
 	out.Answer[0] = sig
-	msg, ok = out.Pack()
-	if !ok {
-		t.Log("Failed to pack msg with RRSIG")
+	msg, err = out.Pack()
+	if err != nil {
+		t.Log("Failed to pack msg with RRSIG", err.Error())
 		t.Fail()
 	}
 
-	if !in.Unpack(msg) {
+	if in.Unpack(msg) != nil {
 		t.Log("Failed to unpack msg with RRSIG")
 		t.Fail()
 	}
@@ -46,7 +46,7 @@ func TestPackUnpack(t *testing.T) {
 
 func TestPackUnpack2(t *testing.T) {
 	m := new(Msg)
-//	m.Extra = make([]RR, 1)
+	//	m.Extra = make([]RR, 1)
 	m.Answer = make([]RR, 1)
 	dom := "miek.nl."
 	rr := new(RR_A)
@@ -57,11 +57,11 @@ func TestPackUnpack2(t *testing.T) {
 	x.Hdr = RR_Header{Name: dom, Rrtype: TypeTXT, Class: ClassINET, Ttl: 0}
 	x.Txt = []string{"heelalaollo"}
 
-//	m.Extra[0] = x
+	//	m.Extra[0] = x
 	m.Answer[0] = rr
-	_, ok := m.Pack()
-	if !ok {
-		t.Log("Packing failed")
+	_, err := m.Pack()
+	if err != nil {
+		t.Log("Packing failed", err.Error())
 		t.Fail()
 		return
 	}
@@ -106,7 +106,7 @@ func TestPack(t *testing.T) {
 			t.Fail()
 			continue
 		}
-		if _, ok := m.Pack(); !ok {
+		if _, err := m.Pack(); err != nil {
 			t.Log("Packing failed")
 			t.Fail()
 		}
@@ -119,19 +119,19 @@ func TestPack(t *testing.T) {
 	x.Ns = append(m.Ns, ns)
 	// This crashes due to the fact the a.ntpns.org isn't a FQDN
 	// How to recover() from a remove panic()?
-	if _, ok := x.Pack(); ok {
+	if _, err := x.Pack(); err == nil {
 		t.Log("Packing should fail")
 		t.Fail()
 	}
 	x.Answer = make([]RR, 1)
 	x.Answer[0], err = NewRR(rr[0])
-	if _, ok := x.Pack(); ok {
+	if _, err := x.Pack(); err == nil {
 		t.Log("Packing should fail")
 		t.Fail()
 	}
 	x.Question = make([]Question, 1)
 	x.Question[0] = Question{";sd#eddddséâèµâââ¥âxzztsestxssweewwsssstx@s@Zåµe@cn.pool.ntp.org.", TypeA, ClassINET}
-	if _, ok := x.Pack(); ok {
+	if _, err := x.Pack(); err == nil {
 		t.Log("Packing should fail")
 		t.Fail()
 	}

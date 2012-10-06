@@ -88,14 +88,14 @@ type rrsigWireFmt struct {
 }
 
 func (r *rrsigWireFmt) Walk(f func(v interface{}, name, tag string) error) error {
-	return f(&r.TypeCovered, "TypeCovered", "") &&
-		f(&r.Algorithm, "Algorithm", "") &&
-		f(&r.Labels, "Labels", "") &&
-		f(&r.OrigTtl, "OrigTtl", "") &&
-		f(&r.Expiration, "Expiration", "") &&
-		f(&r.Inception, "Inception", "") &&
-		f(&r.KeyTag, "KeyTag", "") &&
-		f(&r.SignerName, "SignerName", "domain")
+	return andErr(f(&r.TypeCovered, "TypeCovered", ""),
+		f(&r.Algorithm, "Algorithm", ""),
+		f(&r.Labels, "Labels", ""),
+		f(&r.OrigTtl, "OrigTtl", ""),
+		f(&r.Expiration, "Expiration", ""),
+		f(&r.Inception, "Inception", ""),
+		f(&r.KeyTag, "KeyTag", ""),
+		f(&r.SignerName, "SignerName", "domain"))
 }
 
 func (r *rrsigWireFmt) Header() *RR_Header { return nil }
@@ -110,10 +110,10 @@ type dnskeyWireFmt struct {
 }
 
 func (k *dnskeyWireFmt) Walk(f func(v interface{}, name, tag string) error) error {
-	return f(&k.Flags, "Flags", "") &&
-		f(&k.Protocol, "Protocol", "") &&
-		f(&k.Algorithm, "Algorithm", "") &&
-		f(&k.PublicKey, "PublicKey", "base64")
+	return andErr(f(&k.Flags, "Flags", ""),
+		f(&k.Protocol, "Protocol", ""),
+		f(&k.Algorithm, "Algorithm", ""),
+		f(&k.PublicKey, "PublicKey", "base64"))
 }
 
 func (r *dnskeyWireFmt) Header() *RR_Header { return nil }

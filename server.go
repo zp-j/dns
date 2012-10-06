@@ -436,10 +436,7 @@ func (c *conn) serve() {
 
 // Write implements the ResponseWriter.Write method.
 func (w *response) Write(m *Msg) (err error) {
-	var (
-		data []byte
-		ok   bool
-	)
+	var data []byte
 	if m == nil {
 		return &Error{Err: "nil message"}
 	}

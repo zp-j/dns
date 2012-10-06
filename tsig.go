@@ -90,16 +90,16 @@ func (rr *RR_TSIG) Header() *RR_Header {
 }
 
 func (rr *RR_TSIG) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Algorithm, "Algorithm", "domain") &&
-		f(&rr.TimeSigned, "TimeSigned", "") &&
-		f(&rr.Fudge, "Fudge", "") &&
-		f(&rr.MACSize, "MACSize", "") &&
-		f(&rr.MAC, "MAC", "size-hex") &&
-		f(&rr.OrigId, "OrigId", "") &&
-		f(&rr.Error, "Error", "") &&
-		f(&rr.OtherLen, "OtherLen", "") &&
-		f(&rr.OtherData, "OtherData", "size-hex")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Algorithm, "Algorithm", "domain"),
+		f(&rr.TimeSigned, "TimeSigned", ""),
+		f(&rr.Fudge, "Fudge", ""),
+		f(&rr.MACSize, "MACSize", ""),
+		f(&rr.MAC, "MAC", "size-hex"),
+		f(&rr.OrigId, "OrigId", ""),
+		f(&rr.Error, "Error", ""),
+		f(&rr.OtherLen, "OtherLen", ""),
+		f(&rr.OtherData, "OtherData", "size-hex"))
 }
 
 // TSIG has no official presentation format, but this will suffice.
@@ -146,15 +146,15 @@ type tsigWireFmt struct {
 }
 
 func (t *tsigWireFmt) Walk(f func(v interface{}, name, tag string) error) error {
-	return f(&t.Name, "Name", "domain") &&
-		f(&t.Class, "Class", "") &&
-		f(&t.Ttl, "Ttl", "") &&
-		f(&t.Algorithm, "Algorithm", "domain") &&
-		f(&t.TimeSigned, "TimeSigned", "") &&
-		f(&t.Fudge, "Fudge", "") &&
-		f(&t.Error, "Error", "") &&
-		f(&t.OtherLen, "OtherLen", "") &&
-		f(&t.OtherData, "OtherData", "size-hex")
+	return andErr(f(&t.Name, "Name", "domain"),
+		f(&t.Class, "Class", ""),
+		f(&t.Ttl, "Ttl", ""),
+		f(&t.Algorithm, "Algorithm", "domain"),
+		f(&t.TimeSigned, "TimeSigned", ""),
+		f(&t.Fudge, "Fudge", ""),
+		f(&t.Error, "Error", ""),
+		f(&t.OtherLen, "OtherLen", ""),
+		f(&t.OtherData, "OtherData", "size-hex"))
 }
 
 func (t *tsigWireFmt) Header() *RR_Header { return nil }
@@ -167,7 +167,7 @@ type macWireFmt struct {
 }
 
 func (m *macWireFmt) Walk(f func(v interface{}, name, tag string) error) error {
-	return f(&m.MACSize, "MACSize", "") && f(&m.MAC, "MAC", "size-hex")
+	return andErr(f(&m.MACSize, "MACSize", ""), f(&m.MAC, "MAC", "size-hex"))
 }
 
 func (t *macWireFmt) Header() *RR_Header { return nil }
@@ -181,7 +181,7 @@ type timerWireFmt struct {
 func (t *timerWireFmt) Header() *RR_Header { return nil }
 
 func (t *timerWireFmt) Walk(f func(v interface{}, name, tag string) error) error {
-	return f(&t.TimeSigned, "TimeSigned", "") && f(&t.Fudge, "Fudge", "")
+	return andErr(f(&t.TimeSigned, "TimeSigned", ""), f(&t.Fudge, "Fudge", ""))
 }
 
 // TsigGenerate fills out the TSIG record attached to the message.

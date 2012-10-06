@@ -131,6 +131,15 @@ type dnsStruct interface {
 	Header() *RR_Header
 }
 
+func andErr(e ...error) error {
+	for _, e1 := range e {
+		if e1 != nil {
+			return e1
+		}
+	}
+	return nil
+}
+
 // The wire format for the DNS packet header.
 type Header struct {
 	Id                                 uint16
@@ -141,12 +150,12 @@ type Header struct {
 func (h *Header) Header() *RR_Header { return nil }
 
 func (h *Header) Walk(f func(v interface{}, name, tag string) error) error {
-	return f(&h.Id, "Id", "") &&
-		f(&h.Bits, "Bits", "") &&
-		f(&h.Qdcount, "Qdcount", "") &&
-		f(&h.Ancount, "Ancount", "") &&
-		f(&h.Nscount, "Nscount", "") &&
-		f(&h.Arcount, "Arcount", "")
+	return andErr(f(&h.Id, "Id", ""),
+		f(&h.Bits, "Bits", ""),
+		f(&h.Qdcount, "Qdcount", ""),
+		f(&h.Ancount, "Ancount", ""),
+		f(&h.Nscount, "Nscount", ""),
+		f(&h.Arcount, "Arcount", ""))
 }
 
 const (
@@ -173,9 +182,9 @@ type Question struct {
 func (q *Question) Header() *RR_Header { return nil }
 
 func (q *Question) Walk(f func(v interface{}, name, tag string) error) error {
-	return f(&q.Name, "Name", "domain") &&
-		f(&q.Qtype, "Qtype", "") &&
-		f(&q.Qclass, "Qclass", "")
+	return andErr(f(&q.Name, "Name", "domain"),
+		f(&q.Qtype, "Qtype", ""),
+		f(&q.Qclass, "Qclass", ""))
 }
 
 func (q *Question) String() (s string) {
@@ -239,7 +248,7 @@ func (rr *RR_CNAME) Header() *RR_Header {
 }
 
 func (rr *RR_CNAME) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Target, "Target", "cdomain")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Target, "Target", "cdomain"))
 }
 
 func (rr *RR_CNAME) String() string {
@@ -266,7 +275,7 @@ func (rr *RR_HINFO) Header() *RR_Header {
 }
 
 func (rr *RR_HINFO) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Cpu, "Cpu", "") && f(&rr.Os, "Os", "")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Cpu, "Cpu", ""), f(&rr.Os, "Os", ""))
 }
 
 func (rr *RR_HINFO) String() string {
@@ -291,7 +300,7 @@ func (rr *RR_MB) Header() *RR_Header {
 }
 
 func (rr *RR_MB) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Mb, "Mb", "cdomain")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Mb, "Mb", "cdomain"))
 }
 
 func (rr *RR_MB) String() string {
@@ -317,7 +326,7 @@ func (rr *RR_MG) Header() *RR_Header {
 }
 
 func (rr *RR_MG) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Mg, "Mg", "cdomain")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Mg, "Mg", "cdomain"))
 }
 
 func (rr *RR_MG) String() string {
@@ -344,7 +353,7 @@ func (rr *RR_MINFO) Header() *RR_Header {
 }
 
 func (rr *RR_MINFO) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Rmail, "Rmail", "cdomain") && f(&rr.Email, "Email", "cdomain")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Rmail, "Rmail", "cdomain"), f(&rr.Email, "Email", "cdomain"))
 }
 
 func (rr *RR_MINFO) String() string {
@@ -371,7 +380,7 @@ func (rr *RR_MR) Header() *RR_Header {
 }
 
 func (rr *RR_MR) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Mr, "Mr", "cdomain")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Mr, "Mr", "cdomain"))
 }
 
 func (rr *RR_MR) String() string {
@@ -397,7 +406,7 @@ func (rr *RR_MF) Header() *RR_Header {
 }
 
 func (rr *RR_MF) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Mf, "Mf", "cdomain")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Mf, "Mf", "cdomain"))
 }
 
 func (rr *RR_MF) String() string {
@@ -422,7 +431,7 @@ func (rr *RR_MD) Header() *RR_Header {
 }
 
 func (rr *RR_MD) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Md, "Md", "cdomain")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Md, "Md", "cdomain"))
 }
 
 func (rr *RR_MD) String() string {
@@ -448,7 +457,7 @@ func (rr *RR_MX) Header() *RR_Header {
 }
 
 func (rr *RR_MX) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Pref, "Pref", "") && f(&rr.Mx, "Mx", "cdomain")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Pref, "Pref", ""), f(&rr.Mx, "Mx", "cdomain"))
 }
 
 func (rr *RR_MX) String() string {
@@ -475,7 +484,9 @@ func (rr *RR_AFSDB) Header() *RR_Header {
 }
 
 func (rr *RR_AFSDB) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Subtype, "Subtype", "") && f(&rr.Hostname, "Hostname", "cdomain")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Subtype, "Subtype", ""),
+		f(&rr.Hostname, "Hostname", "cdomain"))
 }
 
 func (rr *RR_AFSDB) String() string {
@@ -502,7 +513,9 @@ func (rr *RR_RT) Header() *RR_Header {
 }
 
 func (rr *RR_RT) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Preference, "Preference", "") && f(&rr.Host, "Host", "cdomain")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Preference, "Preference", ""),
+		f(&rr.Host, "Host", "cdomain"))
 }
 
 func (rr *RR_RT) String() string {
@@ -528,7 +541,7 @@ func (rr *RR_NS) Header() *RR_Header {
 }
 
 func (rr *RR_NS) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Ns, "Ns", "cdomain")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Ns, "Ns", "cdomain"))
 }
 
 func (rr *RR_NS) String() string {
@@ -554,7 +567,7 @@ func (rr *RR_PTR) Header() *RR_Header {
 }
 
 func (rr *RR_PTR) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Ptr, "Ptr", "cdomain")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Ptr, "Ptr", "cdomain"))
 }
 
 func (rr *RR_PTR) String() string {
@@ -581,7 +594,9 @@ func (rr *RR_RP) Header() *RR_Header {
 }
 
 func (rr *RR_RP) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Mbox, "Mbox", "domain") && f(&rr.Txt, "Txt", "domain")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Mbox, "Mbox", "domain"),
+		f(&rr.Txt, "Txt", "domain"))
 }
 
 func (rr *RR_RP) String() string {
@@ -612,14 +627,14 @@ func (rr *RR_SOA) Header() *RR_Header {
 }
 
 func (rr *RR_SOA) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Ns, "Ns", "cdomain") &&
-		f(&rr.Mbox, "Mbox", "cdomain") &&
-		f(&rr.Serial, "Serial", "") &&
-		f(&rr.Refresh, "Refresh", "") &&
-		f(&rr.Retry, "Retry", "") &&
-		f(&rr.Expire, "Expire", "") &&
-		f(&rr.Minttl, "Minttl", "")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Ns, "Ns", "cdomain"),
+		f(&rr.Mbox, "Mbox", "cdomain"),
+		f(&rr.Serial, "Serial", ""),
+		f(&rr.Refresh, "Refresh", ""),
+		f(&rr.Retry, "Retry", ""),
+		f(&rr.Expire, "Expire", ""),
+		f(&rr.Minttl, "Minttl", ""))
 }
 
 func (rr *RR_SOA) String() string {
@@ -651,7 +666,7 @@ func (rr *RR_TXT) Header() *RR_Header {
 }
 
 func (rr *RR_TXT) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(rr.Txt, "Txt", "txt")
+	return andErr(rr.Hdr.Walk(f), f(rr.Txt, "Txt", "txt"))
 }
 
 func (rr *RR_TXT) String() string {
@@ -688,7 +703,7 @@ func (rr *RR_SPF) Header() *RR_Header {
 }
 
 func (rr *RR_SPF) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(rr.Txt, "Txt", "txt")
+	return andErr(rr.Hdr.Walk(f), f(rr.Txt, "Txt", "txt"))
 }
 
 func (rr *RR_SPF) String() string {
@@ -728,11 +743,11 @@ func (rr *RR_SRV) Header() *RR_Header {
 }
 
 func (rr *RR_SRV) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Priority, "Priority", "") &&
-		f(&rr.Weight, "Weight", "") &&
-		f(&rr.Port, "Port", "") &&
-		f(&rr.Target, "Target", "domain")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Priority, "Priority", ""),
+		f(&rr.Weight, "Weight", ""),
+		f(&rr.Port, "Port", ""),
+		f(&rr.Target, "Target", "domain"))
 }
 
 func (rr *RR_SRV) String() string {
@@ -766,13 +781,13 @@ func (rr *RR_NAPTR) Header() *RR_Header {
 }
 
 func (rr *RR_NAPTR) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Order, "Order", "") &&
-		f(&rr.Pref, "Pref", "") &&
-		f(&rr.Flags, "Flags", "") &&
-		f(&rr.Service, "Service", "") &&
-		f(&rr.Regexp, "Regexp", "") &&
-		f(&rr.Replacement, "Replacement", "domain")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Order, "Order", ""),
+		f(&rr.Pref, "Pref", ""),
+		f(&rr.Flags, "Flags", ""),
+		f(&rr.Service, "Service", ""),
+		f(&rr.Regexp, "Regexp", ""),
+		f(&rr.Replacement, "Replacement", "domain"))
 }
 
 func (rr *RR_NAPTR) String() string {
@@ -808,11 +823,11 @@ func (rr *RR_CERT) Header() *RR_Header {
 }
 
 func (rr *RR_CERT) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Type, "Type", "") &&
-		f(&rr.KeyTag, "KeyTag", "") &&
-		f(&rr.Algorithm, "Algorithm", "") &&
-		f(&rr.Certificate, "Certificate", "base64")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Type, "Type", ""),
+		f(&rr.KeyTag, "KeyTag", ""),
+		f(&rr.Algorithm, "Algorithm", ""),
+		f(&rr.Certificate, "Certificate", "base64"))
 }
 
 func (rr *RR_CERT) String() string {
@@ -842,7 +857,7 @@ func (rr *RR_DNAME) Header() *RR_Header {
 }
 
 func (rr *RR_DNAME) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Target, "Target", "domain")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Target, "Target", "domain"))
 }
 
 func (rr *RR_DNAME) String() string {
@@ -868,7 +883,7 @@ func (rr *RR_A) Header() *RR_Header {
 }
 
 func (rr *RR_A) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.A, "A", "a")
+	return andErr(rr.Hdr.Walk(f), f(&rr.A, "A", "a"))
 }
 
 func (rr *RR_A) String() string {
@@ -893,7 +908,7 @@ func (rr *RR_AAAA) Header() *RR_Header {
 }
 
 func (rr *RR_AAAA) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.AAAA, "AAAA", "aaaa")
+	return andErr(rr.Hdr.Walk(f), f(&rr.AAAA, "AAAA", "aaaa"))
 }
 
 func (rr *RR_AAAA) String() string {
@@ -924,14 +939,14 @@ func (rr *RR_LOC) Header() *RR_Header {
 }
 
 func (rr *RR_LOC) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Version, "Version", "") &&
-		f(&rr.Size, "Size", "") &&
-		f(&rr.HorizPre, "HorizPre", "") &&
-		f(&rr.VertPre, "VertPre", "") &&
-		f(&rr.Latitude, "Latitude", "") &&
-		f(&rr.Longitude, "Longitude", "") &&
-		f(&rr.Altitude, "Altitude", "")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Version, "Version", ""),
+		f(&rr.Size, "Size", ""),
+		f(&rr.HorizPre, "HorizPre", ""),
+		f(&rr.VertPre, "VertPre", ""),
+		f(&rr.Latitude, "Latitude", ""),
+		f(&rr.Longitude, "Longitude", ""),
+		f(&rr.Altitude, "Altitude", ""))
 }
 
 func (rr *RR_LOC) String() string {
@@ -1005,16 +1020,16 @@ func (rr *RR_RRSIG) Header() *RR_Header {
 }
 
 func (rr *RR_RRSIG) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.TypeCovered, "TypeCovered", "") &&
-		f(&rr.Algorithm, "Algorithm", "") &&
-		f(&rr.Labels, "Labels", "") &&
-		f(&rr.OrigTtl, "OrigTtl", "") &&
-		f(&rr.Expiration, "Expiration", "") &&
-		f(&rr.Inception, "Inception", "") &&
-		f(&rr.KeyTag, "KeyTag", "") &&
-		f(&rr.SignerName, "SignerName", "domain") &&
-		f(&rr.Signature, "Signature", "base64")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.TypeCovered, "TypeCovered", ""),
+		f(&rr.Algorithm, "Algorithm", ""),
+		f(&rr.Labels, "Labels", ""),
+		f(&rr.OrigTtl, "OrigTtl", ""),
+		f(&rr.Expiration, "Expiration", ""),
+		f(&rr.Inception, "Inception", ""),
+		f(&rr.KeyTag, "KeyTag", ""),
+		f(&rr.SignerName, "SignerName", "domain"),
+		f(&rr.Signature, "Signature", "base64"))
 }
 
 func (rr *RR_RRSIG) String() string {
@@ -1049,9 +1064,9 @@ func (rr *RR_NSEC) Header() *RR_Header {
 }
 
 func (rr *RR_NSEC) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.NextDomain, "NextDomain", "domain") &&
-		f(rr.TypeBitMap, "TypeBitMap", "nsec")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.NextDomain, "NextDomain", "domain"),
+		f(rr.TypeBitMap, "TypeBitMap", "nsec"))
 }
 
 func (rr *RR_NSEC) String() string {
@@ -1089,11 +1104,11 @@ func (rr *RR_DS) Header() *RR_Header {
 }
 
 func (rr *RR_DS) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.KeyTag, "KeyTag", "") &&
-		f(&rr.Algorithm, "Algorithm", "") &&
-		f(&rr.DigestType, "DigestType", "") &&
-		f(&rr.Digest, "Digest", "hex")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.KeyTag, "KeyTag", ""),
+		f(&rr.Algorithm, "Algorithm", ""),
+		f(&rr.DigestType, "DigestType", ""),
+		f(&rr.Digest, "Digest", "hex"))
 }
 
 func (rr *RR_DS) String() string {
@@ -1124,11 +1139,11 @@ func (rr *RR_DLV) Header() *RR_Header {
 }
 
 func (rr *RR_DLV) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.KeyTag, "KeyTag", "") &&
-		f(&rr.Algorithm, "Algorithm", "") &&
-		f(&rr.DigestType, "DigestType", "") &&
-		f(&rr.Digest, "Digest", "hex")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.KeyTag, "KeyTag", ""),
+		f(&rr.Algorithm, "Algorithm", ""),
+		f(&rr.DigestType, "DigestType", ""),
+		f(&rr.Digest, "Digest", "hex"))
 }
 
 func (rr *RR_DLV) String() string {
@@ -1157,9 +1172,9 @@ func (rr *RR_KX) Header() *RR_Header {
 }
 
 func (rr *RR_KX) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Pref, "Pref", "") &&
-		f(rr.Exchanger, "Exchanger", "domain")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Pref, "Pref", ""),
+		f(rr.Exchanger, "Exchanger", "domain"))
 }
 
 func (rr *RR_KX) String() string {
@@ -1188,11 +1203,11 @@ func (rr *RR_TA) Header() *RR_Header {
 }
 
 func (rr *RR_TA) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.KeyTag, "KeyTag", "") &&
-		f(&rr.Algorithm, "Algorithm", "") &&
-		f(&rr.DigestType, "DigestType", "") &&
-		f(&rr.Digest, "Digest", "hex")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.KeyTag, "KeyTag", ""),
+		f(&rr.Algorithm, "Algorithm", ""),
+		f(&rr.DigestType, "DigestType", ""),
+		f(&rr.Digest, "Digest", "hex"))
 }
 
 func (rr *RR_TA) String() string {
@@ -1221,9 +1236,9 @@ func (rr *RR_TALINK) Header() *RR_Header {
 }
 
 func (rr *RR_TALINK) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.PreviousName, "PreviousName", "domain") &&
-		f(&rr.NextName, "NextName", "domain")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.PreviousName, "PreviousName", "domain"),
+		f(&rr.NextName, "NextName", "domain"))
 }
 
 func (rr *RR_TALINK) String() string {
@@ -1251,10 +1266,10 @@ func (rr *RR_SSHFP) Header() *RR_Header {
 }
 
 func (rr *RR_SSHFP) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Algorithm, "Algorithm", "") &&
-		f(&rr.Type, "Type", "") &&
-		f(&rr.FingerPrint, "FingerPrint", "hex")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Algorithm, "Algorithm", ""),
+		f(&rr.Type, "Type", ""),
+		f(&rr.FingerPrint, "FingerPrint", "hex"))
 }
 
 func (rr *RR_SSHFP) String() string {
@@ -1285,12 +1300,12 @@ func (rr *RR_IPSECKEY) Header() *RR_Header {
 }
 
 func (rr *RR_IPSECKEY) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Precedence, "Precedence", "") &&
-		f(&rr.GatewayType, "GatewayType", "") &&
-		f(&rr.Algorithm, "Algorithm", "") &&
-		f(&rr.Gateway, "Gateway", "ipseckey") &&
-		f(&rr.PublicKey, "PublicKey", "base64")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Precedence, "Precedence", ""),
+		f(&rr.GatewayType, "GatewayType", ""),
+		f(&rr.Algorithm, "Algorithm", ""),
+		f(&rr.Gateway, "Gateway", "ipseckey"),
+		f(&rr.PublicKey, "PublicKey", "base64"))
 }
 
 func (rr *RR_IPSECKEY) String() string {
@@ -1323,11 +1338,11 @@ func (rr *RR_DNSKEY) Header() *RR_Header {
 }
 
 func (rr *RR_DNSKEY) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Flags, "Flags", "") &&
-		f(&rr.Protocol, "Protocol", "") &&
-		f(&rr.Algorithm, "Algorithm", "") &&
-		f(&rr.PublicKey, "PublicKey", "base64")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Flags, "Flags", ""),
+		f(&rr.Protocol, "Protocol", ""),
+		f(&rr.Algorithm, "Algorithm", ""),
+		f(&rr.PublicKey, "PublicKey", "base64"))
 }
 
 func (rr *RR_DNSKEY) String() string {
@@ -1363,15 +1378,15 @@ func (rr *RR_NSEC3) Header() *RR_Header {
 }
 
 func (rr *RR_NSEC3) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Hash, "Hash", "") &&
-		f(&rr.Flags, "Flags", "") &&
-		f(&rr.Iterations, "Iterations", "") &&
-		f(&rr.SaltLength, "SaltLength", "") &&
-		f(&rr.Salt, "Salt", "size-hex") &&
-		f(&rr.HashLength, "HashLength", "") &&
-		f(&rr.NextDomain, "NextDomain", "size-base32") &&
-		f(rr.TypeBitMap, "TypeBitMap", "nsec")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Hash, "Hash", ""),
+		f(&rr.Flags, "Flags", ""),
+		f(&rr.Iterations, "Iterations", ""),
+		f(&rr.SaltLength, "SaltLength", ""),
+		f(&rr.Salt, "Salt", "size-hex"),
+		f(&rr.HashLength, "HashLength", ""),
+		f(&rr.NextDomain, "NextDomain", "size-base32"),
+		f(rr.TypeBitMap, "TypeBitMap", "nsec"))
 }
 
 func (rr *RR_NSEC3) String() string {
@@ -1414,12 +1429,12 @@ func (rr *RR_NSEC3PARAM) Header() *RR_Header {
 }
 
 func (rr *RR_NSEC3PARAM) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Hash, "Hash", "") &&
-		f(&rr.Flags, "Flags", "") &&
-		f(&rr.Iterations, "Iterations", "") &&
-		f(&rr.SaltLength, "SaltLength", "") &&
-		f(&rr.Salt, "Salt", "hex")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Hash, "Hash", ""),
+		f(&rr.Flags, "Flags", ""),
+		f(&rr.Iterations, "Iterations", ""),
+		f(&rr.SaltLength, "SaltLength", ""),
+		f(&rr.Salt, "Salt", "hex"))
 }
 
 func (rr *RR_NSEC3PARAM) String() string {
@@ -1457,16 +1472,16 @@ func (rr *RR_TKEY) Header() *RR_Header {
 }
 
 func (rr *RR_TKEY) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Algorithm, "Algorithm", "domain") &&
-		f(&rr.Inception, "Inception", "") &&
-		f(&rr.Expiration, "Expiration", "") &&
-		f(&rr.Mode, "Mode", "") &&
-		f(&rr.Error, "Error", "") &&
-		f(&rr.KeySize, "KeySize", "") &&
-		f(&rr.Key, "Key", "") &&
-		f(&rr.OtherLen, "OtherLen", "") &&
-		f(&rr.OtherData, "OtherData", "") // shouldn't this be 'size-hex'? Like in TISG?
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Algorithm, "Algorithm", "domain"),
+		f(&rr.Inception, "Inception", ""),
+		f(&rr.Expiration, "Expiration", ""),
+		f(&rr.Mode, "Mode", ""),
+		f(&rr.Error, "Error", ""),
+		f(&rr.KeySize, "KeySize", ""),
+		f(&rr.Key, "Key", ""),
+		f(&rr.OtherLen, "OtherLen", ""),
+		f(&rr.OtherData, "OtherData", "")) // shouldn't this be 'size-hex'? Like in TISG?
 }
 
 func (rr *RR_TKEY) String() string {
@@ -1494,7 +1509,7 @@ func (rr *RR_RFC3597) Header() *RR_Header {
 }
 
 func (rr *RR_RFC3597) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Rdata, "Rdata", "hex")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Rdata, "Rdata", "hex"))
 }
 
 func (rr *RR_RFC3597) String() string {
@@ -1523,10 +1538,10 @@ func (rr *RR_URI) Header() *RR_Header {
 }
 
 func (rr *RR_URI) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Priority, "Priority", "") &&
-		f(&rr.Weight, "Weight", "") &&
-		f(&rr.Target, "Target", "txt")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Priority, "Priority", ""),
+		f(&rr.Weight, "Weight", ""),
+		f(&rr.Target, "Target", "txt"))
 }
 
 func (rr *RR_URI) String() string {
@@ -1553,7 +1568,7 @@ func (rr *RR_DHCID) Header() *RR_Header {
 }
 
 func (rr *RR_DHCID) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) && f(&rr.Digest, "Digest", "base64")
+	return andErr(rr.Hdr.Walk(f), f(&rr.Digest, "Digest", "base64"))
 }
 
 func (rr *RR_DHCID) String() string {
@@ -1582,11 +1597,11 @@ func (rr *RR_TLSA) Header() *RR_Header {
 }
 
 func (rr *RR_TLSA) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Usage, "Usage", "") &&
-		f(&rr.Selector, "Selector", "") &&
-		f(&rr.MatchingType, "MatchingType", "") &&
-		f(&rr.Certificate, "Certificate", "hex")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Usage, "Usage", ""),
+		f(&rr.Selector, "Selector", ""),
+		f(&rr.MatchingType, "MatchingType", ""),
+		f(&rr.Certificate, "Certificate", "hex"))
 }
 
 func (rr *RR_TLSA) String() string {
@@ -1620,13 +1635,13 @@ func (rr *RR_HIP) Header() *RR_Header {
 }
 
 func (rr *RR_HIP) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.HitLength, "HitLength", "") &&
-		f(&rr.PublicKeyAlgorithm, "PublicKeyAlgorithm", "") &&
-		f(&rr.PublicKeyLength, "PublicKeyLength", "") &&
-		f(&rr.Hit, "Hit", "hex") &&
-		f(&rr.PublicKey, "PublicKey", "base64") &&
-		f(rr.RendezvousServers, "RendezvousServers", "domain")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.HitLength, "HitLength", ""),
+		f(&rr.PublicKeyAlgorithm, "PublicKeyAlgorithm", ""),
+		f(&rr.PublicKeyLength, "PublicKeyLength", ""),
+		f(&rr.Hit, "Hit", "hex"),
+		f(&rr.PublicKey, "PublicKey", "base64"),
+		f(rr.RendezvousServers, "RendezvousServers", "domain"))
 }
 
 func (rr *RR_HIP) String() string {
@@ -1666,10 +1681,10 @@ func (rr *RR_WKS) Header() *RR_Header {
 }
 
 func (rr *RR_WKS) Walk(f func(v interface{}, name, tag string) error) error {
-	return rr.Hdr.Walk(f) &&
-		f(&rr.Address, "Address", "a") &&
-		f(&rr.Protocol, "Protocol", "") &&
-		f(rr.BitMap, "BitMap", "wks")
+	return andErr(rr.Hdr.Walk(f),
+		f(&rr.Address, "Address", "a"),
+		f(&rr.Protocol, "Protocol", ""),
+		f(rr.BitMap, "BitMap", "wks"))
 }
 
 func (rr *RR_WKS) String() string {

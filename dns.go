@@ -135,11 +135,11 @@ func (h *RR_Header) Header() *RR_Header {
 }
 
 func (h *RR_Header) Walk(f func(v interface{}, name, tag string) error) error {
-	return f(&h.Name, "Name", "domain") &&
-		f(&h.Rrtype, "Rrtype", "") &&
-		f(&h.Class, "Class", "") &&
-		f(&h.Ttl, "Ttl", "") &&
-		f(&h.Rdlength, "Rdlength", "")
+	return andErr(f(&h.Name, "Name", "domain"),
+		f(&h.Rrtype, "Rrtype", ""),
+		f(&h.Class, "Class", ""),
+		f(&h.Ttl, "Ttl", ""),
+		f(&h.Rdlength, "Rdlength", ""))
 }
 
 func (h *RR_Header) CopyHeader() *RR_Header {

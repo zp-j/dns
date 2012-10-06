@@ -51,7 +51,7 @@ func HashName(label string, ha uint8, iter uint16, salt string) string {
 	wire = wire[:n]
 	name := make([]byte, 255)
 	off, err1 := PackDomainName(strings.ToLower(label), name, 0, nil, false)
-	if err != nil {
+	if err1 != nil {
 		return ""
 	}
 	name = name[:off]
