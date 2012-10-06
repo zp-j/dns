@@ -622,6 +622,7 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 // Same restrictions as packStructValue.
 func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 	lenmsg := len(msg)
+	rdstart := off
 	err = any.Walk(func(field interface{}, name, tag string) error {
 		switch fv := field.(type) {
 		default:
@@ -835,19 +836,10 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 			switch tag {
 			default:
 				return ErrTag
-			case "hex":
-				// Rest of the RR is hex encoded, network order an issue here?
-				rdlength := rdlengthHelper(any)
-				endrr := off + rdlength
-				if endrr > lenmsg {
-					return ErrShortBuf
-				}
-				s = hex.EncodeToString(msg[off:endrr])
-				off = endrr
 			case "base64":
-				// Rest of the RR is base64 encoded value
+				// Rest of the RR is base64 encoded
 				rdlength := rdlengthHelper(any)
-				endrr := off + rdlength
+				endrr := rdstart + rdlength
 				if endrr > lenmsg {
 					return ErrShortBuf
 				}
@@ -877,6 +869,10 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 				// a "size" string, but it must be encoded in hex in the string
 				var size int
 				switch t := any.(type) {
+				case *RR_NSEC3PARAM:
+					if name == "Salt" {
+						size = int(t.SaltLength)
+					}
 				case *RR_NSEC3:
 					switch name {
 					case "Salt":
@@ -897,6 +893,22 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 				}
 				s = hex.EncodeToString(msg[off : off+size])
 				off += size
+			case "hex":
+				// Rest of the RR is hex encoded
+				rdlength := rdlengthHelper(any)
+				endrr := rdstart + rdlength
+				if endrr > lenmsg {
+					return ErrShortBuf
+				}
+				/*
+				 * this is not bullet proof 
+				println("rdlength", rdlength)
+				println("rdstart", rdstart)
+				println("endrr", endrr)
+				println("lenmsg", lenmsg)
+				*/
+				s = hex.EncodeToString(msg[off:endrr])
+				off = endrr
 			case "txt":
 				// 1 txt piece
 				rdlength := int(any.Header().Rdlength)

@@ -1434,7 +1434,7 @@ func (rr *RR_NSEC3PARAM) Walk(f func(v interface{}, name, tag string) error) err
 		f(&rr.Flags, "Flags", ""),
 		f(&rr.Iterations, "Iterations", ""),
 		f(&rr.SaltLength, "SaltLength", ""),
-		f(&rr.Salt, "Salt", "hex"))
+		f(&rr.Salt, "Salt", "size-hex"))
 }
 
 func (rr *RR_NSEC3PARAM) String() string {
