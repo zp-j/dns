@@ -33,7 +33,7 @@ type saltWireFmt struct {
 	Salt string `dns:"size-hex"`
 }
 
-func (s *saltWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool { 
+func (s *saltWireFmt) Walk(f func(v interface{}, name, tag string) error) error { 
 	return f(&s.Salt, "Salt", "size-hex")
 }
 
@@ -44,14 +44,14 @@ func HashName(label string, ha uint8, iter uint16, salt string) string {
 	saltwire := new(saltWireFmt)
 	saltwire.Salt = salt
 	wire := make([]byte, DefaultMsgSize)
-	n, ok := PackStruct(saltwire, wire, 0, nil, false)
-	if !ok {
+	n, err := PackStruct(saltwire, wire, 0, nil, false)
+	if err != nil {
 		return ""
 	}
 	wire = wire[:n]
 	name := make([]byte, 255)
-	off, ok1 := PackDomainName(strings.ToLower(label), name, 0, nil, false)
-	if !ok1 {
+	off, err1 := PackDomainName(strings.ToLower(label), name, 0, nil, false)
+	if err != nil {
 		return ""
 	}
 	name = name[:off]

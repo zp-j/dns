@@ -25,11 +25,15 @@ import (
 const maxCompressionOffset = 2 << 13 // We have 14 bits for the compression pointer
 
 var (
-	ErrUnpack      error = &Error{Err: "dns: unpacking failed"}
-	ErrPack        error = &Error{Err: "dns: packing failed"}
+	ErrFqdn        error = &Error{Err: "dns: name must be fully qualified"}
 	ErrId          error = &Error{Err: "dns: id mismatch"}
+	ErrTag         error = &Error{Err: "dns: unknown tag"}
+	ErrFmt         error = &Error{Err: "dns: illegal RR format"}
 	ErrBuf         error = &Error{Err: "dns: buffer size too large"}
+	ErrShortBuf    error = &Error{Err: "dns: buffer size too small"}
 	ErrShortRead   error = &Error{Err: "dns: short read"}
+	ErrLoop        error = &Error{Err: "dns: too many message pointers"}
+	ErrBit         error = &Error{Err: "dns: illegal bits in message"}
 	ErrConn        error = &Error{Err: "dns: conn holds both UDP and TCP connection"}
 	ErrConnEmpty   error = &Error{Err: "dns: conn has no connection"}
 	ErrServ        error = &Error{Err: "dns: no servers could be reached"}
@@ -199,13 +203,12 @@ var Rcode_str = map[int]string{
 // If compression is wanted compress must be true and the compression
 // map needs to hold a mapping between domain names and offsets
 // pointing into msg[].
-func PackDomainName(s string, msg []byte, off int, compression map[string]int, compress bool) (off1 int, ok bool) {
+func PackDomainName(s string, msg []byte, off int, compression map[string]int, compress bool) (off1 int, err error) {
 	// Add trailing dot to canonicalize name.
 	lenmsg := len(msg)
 	ls := len(s)
 	if ls == 0 || s[ls-1] != '.' {
-		println("dns: name not fully qualified")
-		return lenmsg, false
+		return lenmsg, ErrFqdn
 	}
 
 	// Each dot ends a segment of the name.
@@ -233,19 +236,19 @@ func PackDomainName(s string, msg []byte, off int, compression map[string]int, c
 
 		if bs[i] == '.' {
 			if i-begin >= 1<<6 { // top two bits of length must be clear
-				return lenmsg, false
+				return lenmsg, ErrShortBuf
 			}
 			// off can already (we're in a loop) be bigger than len(msg)
 			// this happens when a name isn't fully qualified
 			if off+1 > lenmsg {
-				return lenmsg, false
+				return lenmsg, ErrShortBuf
 			}
 			msg[off] = byte(i - begin)
 			offset := off
 			off++
 			for j := begin; j < i; j++ {
 				if off+1 > lenmsg {
-					return lenmsg, false
+					return lenmsg, ErrShortBuf
 				}
 				msg[off] = bs[j]
 				off++
@@ -276,7 +279,7 @@ func PackDomainName(s string, msg []byte, off int, compression map[string]int, c
 	}
 	// Root label is special
 	if string(bs) == "." {
-		return off, true
+		return off, nil
 	}
 	// If we did compression and we find something at the pointer here
 	if pointer != -1 {
@@ -288,7 +291,7 @@ func PackDomainName(s string, msg []byte, off int, compression map[string]int, c
 	msg[off] = 0
 End:
 	off++
-	return off, true
+	return off, nil
 }
 
 // Unpack a domain name.
@@ -306,14 +309,14 @@ End:
 // We let them jump anywhere and stop jumping after a while.
 
 // UnpackDomainName unpacks a domain name into a string.
-func UnpackDomainName(msg []byte, off int) (s string, off1 int, ok bool) {
+func UnpackDomainName(msg []byte, off int) (s string, off1 int, err error) {
 	s = ""
 	lenmsg := len(msg)
 	ptr := 0 // number of pointers followed
 Loop:
 	for {
 		if off >= lenmsg {
-			return "", lenmsg, false
+			return "", lenmsg, ErrShortBuf
 		}
 		c := int(msg[off])
 		off++
@@ -322,13 +325,13 @@ Loop:
 			if c == 0x00 {
 				// end of name
 				if s == "" {
-					return ".", off, true
+					return ".", off, nil
 				}
 				break Loop
 			}
 			// literal string
 			if off+c > lenmsg {
-				return "", lenmsg, false
+				return "", lenmsg, ErrShortBuf
 			}
 			for j := off; j < off+c; j++ {
 				if msg[j] == '.' {
@@ -347,7 +350,7 @@ Loop:
 			// also, don't follow too many pointers --
 			// maybe there's a loop.
 			if off >= lenmsg {
-				return "", lenmsg, false
+				return "", lenmsg, ErrShortBuf
 			}
 			c1 := msg[off]
 			off++
@@ -355,34 +358,34 @@ Loop:
 				off1 = off
 			}
 			if ptr++; ptr > 10 {
-				return "", lenmsg, false
+				return "", lenmsg, ErrLoop
 			}
 			off = (c^0xC0)<<8 | int(c1)
 		default:
 			// 0x80 and 0x40 are reserved
-			return "", lenmsg, false
+			return "", lenmsg, ErrBit
 		}
 	}
 	if ptr == 0 {
 		off1 = off
 	}
-	return s, off1, true
+	return s, off1, nil
 }
 
 // PackStruct packs a dnsStruct to a msg. 
-func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, compress bool) (off1 int, ok bool) {
-	ok = any.Walk(func(field interface{}, name, tag string) bool {
+func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, compress bool) (off1 int, err error) {
+	err = any.Walk(func(field interface{}, name, tag string) error {
 		lenmsg := len(msg)
 		switch fv := field.(type) {
 		default:
-			return false
+			return ErrTag
 		case []string:
 			switch tag {
 			case "domain":
 				for j := 0; j < len(fv); j++ {
-					off, ok = PackDomainName(fv[j], msg, off, compression, false && compress)
-					if !ok {
-						return false
+					off, err = PackDomainName(fv[j], msg, off, compression, false && compress)
+					if err != nil {
+						return err
 					}
 				}
 			case "txt":
@@ -391,8 +394,7 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 					le := len(element)
 					// Counted string: 1 byte length.
 					if le > 255 || off+1+le > lenmsg {
-						println("dns: overflow packing TXT string")
-						return false
+						return ErrShortBuf
 					}
 					msg[off] = byte(le)
 					off++
@@ -407,8 +409,7 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				element := fv[j]
 				b, e := element.(EDNS0).pack()
 				if e != nil {
-					println("dns: failure packing OPT")
-					return false
+					return e
 				}
 				// Option code
 				msg[off], msg[off+1] = packUint16(element.(EDNS0).Option())
@@ -427,8 +428,7 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				switch len(*fv) {
 				case net.IPv6len:
 					if off+net.IPv4len > lenmsg {
-						println("dns: overflow packing A", off, lenmsg)
-						return false
+						return ErrShortBuf
 					}
 					msg[off] = byte((*fv)[12])
 					msg[off+1] = byte((*fv)[13])
@@ -437,8 +437,7 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 					off += net.IPv4len
 				case net.IPv4len:
 					if off+net.IPv4len > lenmsg {
-						println("dns: overflow packing A", off, lenmsg)
-						return false
+						return ErrShortBuf
 					}
 					msg[off] = byte((*fv)[0])
 					msg[off+1] = byte((*fv)[1])
@@ -448,13 +447,11 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				case 0:
 					// Allowed, for dynamic updates
 				default:
-					println("dns: overflow packing A")
-					return false
+					return ErrShortBuf
 				}
 			case "aaaa":
 				if len(*fv) > net.IPv6len || off+len(*fv) > lenmsg {
-					println("dns: overflow packing AAAA")
-					return false
+					return ErrShortBuf
 				}
 
 				for j := 0; j < net.IPv6len; j++ {
@@ -473,8 +470,7 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 					serv := uint16(fv[j])
 					bitmapbyte = uint16(serv / 8)
 					if int(bitmapbyte) > lenmsg {
-						println("dns: overflow packing WKS")
-						return false
+						return ErrShortBuf
 					}
 					bit := uint16(serv) - bitmapbyte*8
 					msg[bitmapbyte] = byte(1 << (7 - bit))
@@ -490,8 +486,7 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				lastwindow := uint16(0)
 				length := uint16(0)
 				if off+2 > lenmsg {
-					println("dns: overflow packing NSECx bitmap")
-					return false
+					return ErrShortBuf
 				}
 				for j := 0; j < len(fv); j++ {
 					t := uint16(fv[j])
@@ -500,15 +495,13 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 						// New window, jump to the new offset
 						off += int(length) + 3
 						if off > lenmsg {
-							println("dns: overflow packing NSECx bitmap")
-							return false
+							return ErrShortBuf
 						}
 					}
 					length = (t - window*256) / 8
 					bit := t - (window * 256) - (length * 8)
 					if off+2+int(length) > lenmsg {
-						println("dns: overflow packing NSECx bitmap")
-						return false
+						return ErrShortBuf
 					}
 
 					// Setting the window #
@@ -522,29 +515,25 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				off += 2 + int(length)
 				off++
 				if off > lenmsg {
-					println("dns: overflow packing NSECx bitmap")
-					return false
+					return ErrShortBuf
 				}
 			}
 		case *uint8:
 			if off+1 > lenmsg {
-				println("dns: overflow packing uint8")
-				return false
+				return ErrShortBuf
 			}
 			msg[off] = byte(*fv)
 			off++
 		case *uint16:
 			if off+2 > lenmsg {
-				println("dns: overflow packing uint16")
-				return false
+				return ErrShortBuf
 			}
 			msg[off] = byte(*fv >> 8)
 			msg[off+1] = byte(*fv)
 			off += 2
 		case *uint32:
 			if off+4 > lenmsg {
-				println("dns: overflow packing uint32")
-				return false
+				return ErrShortBuf
 			}
 			msg[off] = byte(*fv >> 24)
 			msg[off+1] = byte(*fv >> 16)
@@ -554,8 +543,7 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 		case *uint64:
 			// Only used in TSIG, where it stops at 48 bits, so we discard the upper 16
 			if off+6 > lenmsg {
-				println("dns: overflow packing uint64")
-				return false
+				return ErrShortBuf
 			}
 			msg[off] = byte(*fv >> 40)
 			msg[off+1] = byte(*fv >> 32)
@@ -570,45 +558,40 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 			s := *fv
 			switch tag {
 			default:
-				return false
+				return ErrTag
 			case "base64":
 				b64, err := packBase64([]byte(s))
 				if err != nil {
-					println("dns: overflow packing base64")
-					return false
+					return err
 				}
 				copy(msg[off:off+len(b64)], b64)
 				off += len(b64)
 			case "domain":
-				if off, ok = PackDomainName(s, msg, off, compression, false && compress); !ok {
-					println("dns: overflow packing domain-name", off)
-					return false
+				if off, err = PackDomainName(s, msg, off, compression, false && compress); err != nil {
+					return err
 				}
 			case "cdomain":
-				if off, ok = PackDomainName(s, msg, off, compression, true && compress); !ok {
-					println("dns: overflow packing domain-name", off)
-					return false
+				if off, err = PackDomainName(s, msg, off, compression, true && compress); err != nil {
+					return err
 				}
 			case "base32":
 				b32, err := packBase32([]byte(s))
 				if err != nil {
-					println("dns: overflow packing base32")
-					return false
+					return err
 				}
 				copy(msg[off:off+len(b32)], b32)
 				off += len(b32)
 			case "size-hex":
-				fallthrough	// when unpacking this is important, when packing we can just fallthrough
+				fallthrough // when unpacking this is important, when packing we can just fallthrough
 			case "hex":
 				// There is no length encoded here
-				h, e := hex.DecodeString(s)
-				if e != nil {
-					println("dns: overflow packing hex string")
-					return false
+				h, err := hex.DecodeString(s)
+				if err != nil {
+					return err
 				}
 				if off+hex.DecodedLen(len(s)) > lenmsg {
 					// Overflow
-					return false
+					return ErrShortBuf
 				}
 				copy(msg[off:off+hex.DecodedLen(len(s))], h)
 				off += hex.DecodedLen(len(s))
@@ -617,8 +600,7 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 			case "":
 				// Counted string: 1 byte length.
 				if len(s) > 255 || off+1+len(s) > lenmsg {
-					println("dns: overflow packing string")
-					return false
+					return ErrShortBuf
 				}
 				msg[off] = byte(len(s))
 				off++
@@ -628,23 +610,23 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				off += len(s)
 			}
 		}
-		return true
+		return nil
 	})
-	if !ok {
-		return len(msg), false
+	if err != nil {
+		return len(msg), err
 	}
-	return off, true
+	return off, nil
 }
 
 // UnpackStrct unpacks a dnsStruct from msg.
 // Same restrictions as packStructValue.
-func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
+func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 	lenmsg := len(msg)
-	ok = any.Walk(func(field interface{}, name, tag string) bool {
+	err = any.Walk(func(field interface{}, name, tag string) error {
 		var rdstart int
 		switch fv := field.(type) {
 		default:
-			return false
+			return ErrTag
 		case []string:
 			switch tag {
 			case "domain":
@@ -652,10 +634,9 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				servers := make([]string, 0)
 				var s string
 				for off < lenmsg {
-					s, off, ok = UnpackDomainName(msg, off)
-					if !ok {
-						println("dns: failure unpacking domain")
-						return false
+					s, off, err = UnpackDomainName(msg, off)
+					if err != nil {
+						return err
 					}
 					servers = append(servers, s)
 				}
@@ -666,8 +647,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 			Txts:
 				l := int(msg[off])
 				if off+l+1 > lenmsg {
-					println("dns: failure unpacking txt strings")
-					return false
+					return ErrShortBuf
 				}
 				txt = append(txt, string(msg[off+1:off+l+1]))
 				off += l + 1
@@ -690,8 +670,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 			code, off = unpackUint16(msg, off) // Overflow? TODO
 			optlen, off1 := unpackUint16(msg, off)
 			if off1+int(optlen) > off+rdlength {
-				println("dns: overflow unpacking OPT")
-				return false
+				return ErrShortBuf
 			}
 			switch code {
 			case EDNS0NSID:
@@ -710,15 +689,13 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 			switch tag {
 			case "a":
 				if off+net.IPv4len > len(msg) {
-					println("dns: overflow unpacking A")
-					return false
+					return ErrShortBuf
 				}
 				*fv = net.IPv4(msg[off], msg[off+1], msg[off+2], msg[off+3])
 				off += net.IPv4len
 			case "aaaa":
 				if off+net.IPv6len > lenmsg {
-					println("dns: overflow unpacking AAAA")
-					return false
+					return ErrShortBuf
 				}
 				*fv = net.IP{msg[off], msg[off+1], msg[off+2], msg[off+3], msg[off+4],
 					msg[off+5], msg[off+6], msg[off+7], msg[off+8], msg[off+9], msg[off+10],
@@ -768,15 +745,11 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				// Rest of the record is the type bitmap
 				rdlength := rdlengthHelper(any)
 				if rdlength == 0 {
-					println("dns: not a nsecx record")
-					return false
+					return ErrFmt
 				}
-
 				endrr := rdstart + rdlength
-
 				if off+2 > lenmsg {
-					println("dns: overflow unpacking NSEC")
-					return false
+					return ErrShortBuf
 				}
 				nsec := make([]uint16, 0)
 				length := 0
@@ -788,12 +761,10 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 					if length == 0 {
 						// A length window of zero is strange. If there
 						// the window should not have been specified. Bail out
-						println("dns: length == 0 when unpacking NSEC")
-						return false
+						return ErrFmt
 					}
 					if length > 32 {
-						println("dns: length > 32 when unpacking NSEC")
-						return false
+						return ErrFmt
 					}
 
 					// Walk the bytes in the window - and check the bit
@@ -833,23 +804,20 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 			}
 		case *uint8:
 			if off+1 > lenmsg {
-				println("dns: overflow unpacking uint8")
-				return false
+				return ErrShortBuf
 			}
 			*fv = uint8(msg[off])
 			off++
 		case *uint16:
 			var i uint16
 			if off+2 > lenmsg {
-				println("dns: overflow unpacking uint16")
-				return false
+				return ErrShortBuf
 			}
 			i, off = unpackUint16(msg, off)
 			*fv = i
 		case *uint32:
 			if off+4 > lenmsg {
-				println("dns: overflow unpacking uint32")
-				return false
+				return ErrShortBuf
 			}
 			*fv = uint32(msg[off])<<24 | uint32(msg[off+1])<<16 |
 				uint32(msg[off+2])<<8 | uint32(msg[off+3])
@@ -858,8 +826,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 			// This is *only* used in TSIG where the last 48 bits are occupied
 			// So for now, assume a uint48 (6 bytes)
 			if off+6 > lenmsg {
-				println("dns: overflow unpacking uint64")
-				return false
+				return ErrShortBuf
 			}
 			*fv = uint64(msg[off])<<40 | uint64(msg[off+1])<<32 | uint64(msg[off+2])<<24 | uint64(msg[off+3])<<16 |
 				uint64(msg[off+4])<<8 | uint64(msg[off+5])
@@ -868,15 +835,13 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 			var s string
 			switch tag {
 			default:
-				println("dns: unknown tag unpacking string", tag)
-				return false
+				return ErrTag
 			case "hex":
 				// Rest of the RR is hex encoded, network order an issue here?
 				rdlength := rdlengthHelper(any)
 				endrr := rdstart + rdlength
 				if endrr > lenmsg {
-					println("dns: overflow when unpacking hex string")
-					return false
+					return ErrShortBuf
 				}
 				s = hex.EncodeToString(msg[off:endrr])
 				off = endrr
@@ -885,37 +850,35 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				rdlength := rdlengthHelper(any)
 				endrr := rdstart + rdlength
 				if endrr > lenmsg {
-					println("dns: failure unpacking base64")
-					return false
+					return ErrShortBuf
 				}
 				s = unpackBase64(msg[off:endrr])
 				off = endrr
 			case "cdomain":
 				fallthrough
 			case "domain":
-				s, off, ok = UnpackDomainName(msg, off)
-				if !ok {
-					println("dns: failure unpacking domain-name")
-					return false
+				s, off, err = UnpackDomainName(msg, off)
+				if err != nil {
+					return err
 				}
 			case "base32":
 				/*
-				// XXX(mg): This is of course ugly as hell
-				var size int
-				switch reflect.ValueOf(fv).Elem().Type().Name() {
-				case "RR_NSEC3":
-					switch reflect.ValueOf(fv).Elem().Type().Field(i).Name {
-					case "NextDomain":
-						name := val.FieldByName("HashLength")
-						size = int(name.Uint())
+					// XXX(mg): This is of course ugly as hell
+					var size int
+					switch reflect.ValueOf(fv).Elem().Type().Name() {
+					case "RR_NSEC3":
+						switch reflect.ValueOf(fv).Elem().Type().Field(i).Name {
+						case "NextDomain":
+							name := val.FieldByName("HashLength")
+							size = int(name.Uint())
+						}
 					}
-				}
-				if off+size > lenmsg {
-					println("dns: failure unpacking base32 string")
-					return false
-				}
-				s = unpackBase32(msg[off : off+size])
-				off += size
+					if off+size > lenmsg {
+						println("dns: failure unpacking base32 string")
+						return false
+					}
+					s = unpackBase32(msg[off : off+size])
+					off += size
 				*/
 			case "size-hex":
 				// a "size" string, but it must be encoded in hex in the string
@@ -937,8 +900,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 					}
 				}
 				if off+size > lenmsg {
-					println("dns: failure unpacking size-hex string")
-					return false
+					return ErrShortBuf
 				}
 				s = hex.EncodeToString(msg[off : off+size])
 				off += size
@@ -947,8 +909,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				rdlength := int(any.Header().Rdlength)
 			Txt:
 				if off >= lenmsg || off+1+int(msg[off]) > lenmsg {
-					println("dns: failure unpacking txt string")
-					return false
+					return ErrShortBuf
 				}
 				n := int(msg[off])
 				off++
@@ -962,8 +923,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 				}
 			case "":
 				if off >= lenmsg || off+1+int(msg[off]) > lenmsg {
-					println("dns: failure unpacking string")
-					return false
+					return ErrShortBuf
 				}
 				n := int(msg[off])
 				off++
@@ -974,12 +934,12 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, ok bool) {
 			}
 			*fv = s
 		}
-		return true
+		return nil
 	})
-	if !ok {
-		return lenmsg, false
+	if err != nil {
+		return lenmsg, err
 	}
-	return off, true
+	return off, nil
 }
 
 // Helper function for unpacking
@@ -1030,28 +990,28 @@ func packBase32(s []byte) ([]byte, error) {
 }
 
 // Resource record packer.
-func PackRR(rr RR, msg []byte, off int, compression map[string]int, compress bool) (off1 int, ok bool) {
+func PackRR(rr RR, msg []byte, off int, compression map[string]int, compress bool) (off1 int, err error) {
 	if rr == nil {
-		return len(msg), false
+		return len(msg), ErrFmt
 	}
 
-	off1, ok = PackStruct(rr, msg, off, compression, compress)
-	if !ok {
-		return len(msg), false
+	off1, err = PackStruct(rr, msg, off, compression, compress)
+	if err != nil {
+		return len(msg), err
 	}
 	if !rawSetRdlength(msg, off, off1) {
-		return len(msg), false
+		return len(msg), ErrShortBuf
 	}
-	return off1, true
+	return off1, nil
 }
 
 // Resource record unpacker.
-func UnpackRR(msg []byte, off int) (rr RR, off1 int, ok bool) {
+func UnpackRR(msg []byte, off int) (rr RR, off1 int, err error) {
 	// unpack just the header, to find the rr type and length
 	var h RR_Header
 	off0 := off
-	if off, ok = UnpackStruct(&h, msg, off); !ok {
-		return nil, len(msg), false
+	if off, err = UnpackStruct(&h, msg, off); err != nil {
+		return nil, len(msg), err
 	}
 	end := off + int(h.Rdlength)
 	// make an rr of that type and re-unpack.
@@ -1061,11 +1021,11 @@ func UnpackRR(msg []byte, off int) (rr RR, off1 int, ok bool) {
 	} else {
 		rr = mk()
 	}
-	off, ok = UnpackStruct(rr, msg, off0)
+	off, err = UnpackStruct(rr, msg, off0)
 	if off != end {
-		return &h, end, true
+		return &h, end, nil
 	}
-	return rr, off, ok
+	return rr, off, err
 }
 
 // Reverse a map
@@ -1139,9 +1099,9 @@ func (h *MsgHdr) String() string {
 
 // Pack packs a Msg: it is converted to to wire format.
 // If the dns.Compress is true the message will be in compressed wire format.
-func (dns *Msg) Pack() (msg []byte, ok bool) {
+func (dns *Msg) Pack() (msg []byte, err error) {
 	if dns == nil {
-		return nil, false
+		return nil, ErrFmt
 	}
 	var dh Header
 	compression := make(map[string]int) // Compression pointer mappings
@@ -1190,34 +1150,33 @@ func (dns *Msg) Pack() (msg []byte, ok bool) {
 
 	// Pack it in: header and then the pieces.
 	off := 0
-	off, ok = PackStruct(&dh, msg, off, compression, dns.Compress)
+	off, err = PackStruct(&dh, msg, off, compression, dns.Compress)
 	for i := 0; i < len(question); i++ {
-		off, ok = PackStruct(&question[i], msg, off, compression, dns.Compress)
+		off, err = PackStruct(&question[i], msg, off, compression, dns.Compress)
 	}
 	for i := 0; i < len(answer); i++ {
-		off, ok = PackRR(answer[i], msg, off, compression, dns.Compress)
+		off, err = PackRR(answer[i], msg, off, compression, dns.Compress)
 	}
 	for i := 0; i < len(ns); i++ {
-		off, ok = PackRR(ns[i], msg, off, compression, dns.Compress)
+		off, err = PackRR(ns[i], msg, off, compression, dns.Compress)
 	}
 	for i := 0; i < len(extra); i++ {
-		off, ok = PackRR(extra[i], msg, off, compression, dns.Compress)
+		off, err = PackRR(extra[i], msg, off, compression, dns.Compress)
 	}
-	if !ok {
-		return nil, false
+	if err != nil {
+		return nil, err
 	}
 	//println("allocated", dns.Len()+1, "used", off)
-	return msg[:off], true
+	return msg[:off], nil
 }
 
 // Unpack unpacks a binary message to a Msg structure.
-func (dns *Msg) Unpack(msg []byte) bool {
+func (dns *Msg) Unpack(msg []byte) (err error) {
 	// Header.
 	var dh Header
 	off := 0
-	var ok bool
-	if off, ok = UnpackStruct(&dh, msg, off); !ok {
-		return false
+	if off, err = UnpackStruct(&dh, msg, off); err != nil {
+		return err
 	}
 	dns.Id = dh.Id
 	dns.Response = (dh.Bits & _QR) != 0
@@ -1238,25 +1197,24 @@ func (dns *Msg) Unpack(msg []byte) bool {
 	dns.Extra = make([]RR, dh.Arcount)
 
 	for i := 0; i < len(dns.Question); i++ {
-		off, ok = UnpackStruct(&dns.Question[i], msg, off)
+		off, err = UnpackStruct(&dns.Question[i], msg, off)
 	}
 	for i := 0; i < len(dns.Answer); i++ {
-		dns.Answer[i], off, ok = UnpackRR(msg, off)
+		dns.Answer[i], off, err = UnpackRR(msg, off)
 	}
 	for i := 0; i < len(dns.Ns); i++ {
-		dns.Ns[i], off, ok = UnpackRR(msg, off)
+		dns.Ns[i], off, err = UnpackRR(msg, off)
 	}
 	for i := 0; i < len(dns.Extra); i++ {
-		dns.Extra[i], off, ok = UnpackRR(msg, off)
+		dns.Extra[i], off, err = UnpackRR(msg, off)
 	}
-	if !ok {
-		return false
+	if err != nil {
+		return err
 	}
 	if off != len(msg) {
-		// TODO(mg) remove eventually
-		println("extra bytes in dns packet", off, "<", len(msg))
+		return ErrShortBuf
 	}
-	return true
+	return nil
 }
 
 // Convert a complete message to a string with dig-like output.

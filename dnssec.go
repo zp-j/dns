@@ -87,7 +87,7 @@ type rrsigWireFmt struct {
 	/* No Signature */
 }
 
-func (r *rrsigWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (r *rrsigWireFmt) Walk(f func(v interface{}, name, tag string) error) error {
 	return f(&r.TypeCovered, "TypeCovered", "") &&
 		f(&r.Algorithm, "Algorithm", "") &&
 		f(&r.Labels, "Labels", "") &&
@@ -109,7 +109,7 @@ type dnskeyWireFmt struct {
 	/* Nothing is left out */
 }
 
-func (k *dnskeyWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (k *dnskeyWireFmt) Walk(f func(v interface{}, name, tag string) error) error {
 	return f(&k.Flags, "Flags", "") &&
 		f(&k.Protocol, "Protocol", "") &&
 		f(&k.Algorithm, "Algorithm", "") &&
@@ -141,8 +141,8 @@ func (k *RR_DNSKEY) KeyTag() uint16 {
 		keywire.Algorithm = k.Algorithm
 		keywire.PublicKey = k.PublicKey
 		wire := make([]byte, DefaultMsgSize)
-		n, ok := PackStruct(keywire, wire, 0, nil, false)
-		if !ok {
+		n, err := PackStruct(keywire, wire, 0, nil, false)
+		if err != nil {
 			return 0
 		}
 		wire = wire[:n]
@@ -179,15 +179,15 @@ func (k *RR_DNSKEY) ToDS(h int) *RR_DS {
 	keywire.Algorithm = k.Algorithm
 	keywire.PublicKey = k.PublicKey
 	wire := make([]byte, DefaultMsgSize)
-	n, ok := PackStruct(keywire, wire, 0, nil, false)
-	if !ok {
+	n, err := PackStruct(keywire, wire, 0, nil, false)
+	if err != nil {
 		return nil
 	}
 	wire = wire[:n]
 
 	owner := make([]byte, 255)
-	off, ok1 := PackDomainName(k.Hdr.Name, owner, 0, nil, false)
-	if !ok1 {
+	off, err1 := PackDomainName(k.Hdr.Name, owner, 0, nil, false)
+	if err1 != nil {
 		return nil
 	}
 	owner = owner[:off]
@@ -259,9 +259,9 @@ func (rr *RR_RRSIG) Sign(k PrivateKey, rrset []RR) error {
 
 	// Create the desired binary blob
 	signdata := make([]byte, DefaultMsgSize)
-	n, ok := PackStruct(sigwire, signdata, 0, nil, false)
-	if !ok {
-		return ErrPack
+	n, err := PackStruct(sigwire, signdata, 0, nil, false)
+	if err != nil {
+		return err
 	}
 	signdata = signdata[:n]
 	wire := rawSignatureData(rrset, rr)
@@ -371,9 +371,9 @@ func (rr *RR_RRSIG) Verify(k *RR_DNSKEY, rrset []RR) error {
 	sigwire.SignerName = strings.ToLower(rr.SignerName)
 	// Create the desired binary blob
 	signeddata := make([]byte, DefaultMsgSize)
-	n, ok := PackStruct(sigwire, signeddata, 0, nil, false)
-	if !ok {
-		return ErrPack
+	n, err := PackStruct(sigwire, signeddata, 0, nil, false)
+	if err != nil {
+		return err
 	}
 	signeddata = signeddata[:n]
 	wire := rawSignatureData(rrset, rr)
@@ -706,8 +706,8 @@ func rawSignatureData(rrset []RR, s *RR_RRSIG) (buf []byte) {
 		}
 		// 6.2. Canonical RR Form. (5) - origTTL
 		wire := make([]byte, r.Len()*2)
-		off, ok1 := PackRR(r1, wire, 0, nil, false)
-		if !ok1 {
+		off, err1 := PackRR(r1, wire, 0, nil, false)
+		if err1 != nil {
 			return nil
 		}
 		wire = wire[:off]

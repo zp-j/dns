@@ -89,7 +89,7 @@ func (rr *RR_TSIG) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_TSIG) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_TSIG) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Algorithm, "Algorithm", "domain") &&
 		f(&rr.TimeSigned, "TimeSigned", "") &&
@@ -145,7 +145,7 @@ type tsigWireFmt struct {
 	OtherData string `dns:"size-hex"`
 }
 
-func (t *tsigWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (t *tsigWireFmt) Walk(f func(v interface{}, name, tag string) error) error {
 	return f(&t.Name, "Name", "domain") &&
 		f(&t.Class, "Class", "") &&
 		f(&t.Ttl, "Ttl", "") &&
@@ -166,7 +166,7 @@ type macWireFmt struct {
 	MAC     string `dns:"size-hex"`
 }
 
-func (m *macWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (m *macWireFmt) Walk(f func(v interface{}, name, tag string) error) error {
 	return f(&m.MACSize, "MACSize", "") && f(&m.MAC, "MAC", "size-hex")
 }
 
@@ -180,7 +180,7 @@ type timerWireFmt struct {
 
 func (t *timerWireFmt) Header() *RR_Header { return nil }
 
-func (t *timerWireFmt) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (t *timerWireFmt) Walk(f func(v interface{}, name, tag string) error) error {
 	return f(&t.TimeSigned, "TimeSigned", "") && f(&t.Fudge, "Fudge", "")
 }
 
@@ -204,9 +204,9 @@ func TsigGenerate(m *Msg, secret, requestMAC string, timersOnly bool) ([]byte, s
 
 	rr := m.Extra[len(m.Extra)-1].(*RR_TSIG)
 	m.Extra = m.Extra[0 : len(m.Extra)-1] // kill the TSIG from the msg
-	mbuf, ok := m.Pack()
-	if !ok {
-		return nil, "", ErrPack
+	mbuf, err := m.Pack()
+	if err != nil {
+		return nil, "", err
 	}
 	buf := tsigBuffer(mbuf, rr, requestMAC, timersOnly)
 
@@ -233,10 +233,10 @@ func TsigGenerate(m *Msg, secret, requestMAC string, timersOnly bool) ([]byte, s
 	t.OrigId = m.Id
 
 	tbuf := make([]byte, t.Len())
-	if off, ok := PackRR(t, tbuf, 0, nil, false); ok {
+	if off, err := PackRR(t, tbuf, 0, nil, false); err == nil {
 		tbuf = tbuf[:off] // reset to actual size used
 	} else {
-		return nil, "", ErrPack
+		return nil, "", err
 	}
 	mbuf = append(mbuf, tbuf...)
 	rawSetExtraLen(mbuf, uint16(len(m.Extra)+1))
@@ -341,9 +341,9 @@ func stripTsig(msg []byte) ([]byte, *RR_TSIG, error) {
 	rr := new(RR_TSIG)
 	off := 0
 	tsigoff := 0
-	var ok bool
-	if off, ok = UnpackStruct(&dh, msg, off); !ok {
-		return nil, nil, ErrUnpack
+	var err error
+	if off, err = UnpackStruct(&dh, msg, off); err != nil {
+		return nil, nil, err
 	}
 	if dh.Arcount == 0 {
 		return nil, nil, ErrNoSig
@@ -360,17 +360,17 @@ func stripTsig(msg []byte) ([]byte, *RR_TSIG, error) {
 	dns.Extra = make([]RR, dh.Arcount)
 
 	for i := 0; i < len(dns.Question); i++ {
-		off, ok = UnpackStruct(&dns.Question[i], msg, off)
+		off, err = UnpackStruct(&dns.Question[i], msg, off)
 	}
 	for i := 0; i < len(dns.Answer); i++ {
-		dns.Answer[i], off, ok = UnpackRR(msg, off)
+		dns.Answer[i], off, err = UnpackRR(msg, off)
 	}
 	for i := 0; i < len(dns.Ns); i++ {
-		dns.Ns[i], off, ok = UnpackRR(msg, off)
+		dns.Ns[i], off, err = UnpackRR(msg, off)
 	}
 	for i := 0; i < len(dns.Extra); i++ {
 		tsigoff = off
-		dns.Extra[i], off, ok = UnpackRR(msg, off)
+		dns.Extra[i], off, err = UnpackRR(msg, off)
 		if dns.Extra[i].Header().Rrtype == TypeTSIG {
 			rr = dns.Extra[i].(*RR_TSIG)
 			// Adjust Arcount.
@@ -379,8 +379,8 @@ func stripTsig(msg []byte) ([]byte, *RR_TSIG, error) {
 			break
 		}
 	}
-	if !ok {
-		return nil, nil, ErrUnpack
+	if err != nil {
+		return nil, nil, err
 	}
 	if rr == nil {
 		return nil, nil, ErrNoSig

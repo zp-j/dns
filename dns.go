@@ -134,7 +134,7 @@ func (h *RR_Header) Header() *RR_Header {
 	return h
 }
 
-func (h *RR_Header) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (h *RR_Header) Walk(f func(v interface{}, name, tag string) error) error {
 	return f(&h.Name, "Name", "domain") &&
 		f(&h.Rrtype, "Rrtype", "") &&
 		f(&h.Class, "Class", "") &&

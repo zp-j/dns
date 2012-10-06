@@ -50,7 +50,7 @@ func (rr *RR_OPT) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_OPT) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_OPT) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(rr.Option, "Option", "opt")
 }
 

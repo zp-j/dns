@@ -396,7 +396,7 @@ func (c *conn) serve() {
 		w := new(response)
 		w.conn = c
 		req := new(Msg)
-		if !req.Unpack(c.request) {
+		if req.Unpack(c.request) != nil {
 			// Send a format error back
 			x := new(Msg)
 			x.SetRcodeFormatError(req)
@@ -449,9 +449,9 @@ func (w *response) Write(m *Msg) (err error) {
 			return err
 		}
 	} else {
-		data, ok = m.Pack()
-		if !ok {
-			return ErrPack
+		data, err = m.Pack()
+		if err != nil {
+			return err
 		}
 	}
 	return w.WriteBuf(data)

@@ -124,7 +124,7 @@ type dnsStruct interface {
 	// *int, *bool in the case of dnsMsgHdr.
 	// Whenever f returns false, Walk must stop and return
 	// false, and otherwise return true.
-	Walk(f func(v interface{}, name, tag string) (ok bool)) (ok bool)
+	Walk(f func(v interface{}, name, tag string) (err error)) (err error)
 
 	// Header returns the header of an resource record. The header contains
 	// everything up to the rdata.
@@ -140,7 +140,7 @@ type Header struct {
 
 func (h *Header) Header() *RR_Header { return nil }
 
-func (h *Header) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (h *Header) Walk(f func(v interface{}, name, tag string) error) error {
 	return f(&h.Id, "Id", "") &&
 		f(&h.Bits, "Bits", "") &&
 		f(&h.Qdcount, "Qdcount", "") &&
@@ -172,7 +172,7 @@ type Question struct {
 
 func (q *Question) Header() *RR_Header { return nil }
 
-func (q *Question) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (q *Question) Walk(f func(v interface{}, name, tag string) error) error {
 	return f(&q.Name, "Name", "domain") &&
 		f(&q.Qtype, "Qtype", "") &&
 		f(&q.Qclass, "Qclass", "")
@@ -213,7 +213,7 @@ func (rr *RR_ANY) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_ANY) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_ANY) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f)
 }
 
@@ -238,7 +238,7 @@ func (rr *RR_CNAME) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_CNAME) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_CNAME) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Target, "Target", "cdomain")
 }
 
@@ -265,7 +265,7 @@ func (rr *RR_HINFO) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_HINFO) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_HINFO) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Cpu, "Cpu", "") && f(&rr.Os, "Os", "")
 }
 
@@ -290,7 +290,7 @@ func (rr *RR_MB) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_MB) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_MB) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Mb, "Mb", "cdomain")
 }
 
@@ -316,7 +316,7 @@ func (rr *RR_MG) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_MG) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_MG) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Mg, "Mg", "cdomain")
 }
 
@@ -343,7 +343,7 @@ func (rr *RR_MINFO) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_MINFO) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_MINFO) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Rmail, "Rmail", "cdomain") && f(&rr.Email, "Email", "cdomain")
 }
 
@@ -370,7 +370,7 @@ func (rr *RR_MR) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_MR) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_MR) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Mr, "Mr", "cdomain")
 }
 
@@ -396,7 +396,7 @@ func (rr *RR_MF) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_MF) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_MF) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Mf, "Mf", "cdomain")
 }
 
@@ -421,7 +421,7 @@ func (rr *RR_MD) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_MD) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_MD) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Md, "Md", "cdomain")
 }
 
@@ -447,7 +447,7 @@ func (rr *RR_MX) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_MX) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_MX) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Pref, "Pref", "") && f(&rr.Mx, "Mx", "cdomain")
 }
 
@@ -474,7 +474,7 @@ func (rr *RR_AFSDB) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_AFSDB) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_AFSDB) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Subtype, "Subtype", "") && f(&rr.Hostname, "Hostname", "cdomain")
 }
 
@@ -501,7 +501,7 @@ func (rr *RR_RT) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_RT) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_RT) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Preference, "Preference", "") && f(&rr.Host, "Host", "cdomain")
 }
 
@@ -527,7 +527,7 @@ func (rr *RR_NS) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_NS) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_NS) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Ns, "Ns", "cdomain")
 }
 
@@ -553,7 +553,7 @@ func (rr *RR_PTR) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_PTR) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_PTR) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Ptr, "Ptr", "cdomain")
 }
 
@@ -580,7 +580,7 @@ func (rr *RR_RP) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_RP) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_RP) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Mbox, "Mbox", "domain") && f(&rr.Txt, "Txt", "domain")
 }
 
@@ -611,7 +611,7 @@ func (rr *RR_SOA) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_SOA) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_SOA) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Ns, "Ns", "cdomain") &&
 		f(&rr.Mbox, "Mbox", "cdomain") &&
@@ -650,7 +650,7 @@ func (rr *RR_TXT) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_TXT) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_TXT) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(rr.Txt, "Txt", "txt")
 }
 
@@ -687,7 +687,7 @@ func (rr *RR_SPF) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_SPF) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_SPF) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(rr.Txt, "Txt", "txt")
 }
 
@@ -727,7 +727,7 @@ func (rr *RR_SRV) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_SRV) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_SRV) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Priority, "Priority", "") &&
 		f(&rr.Weight, "Weight", "") &&
@@ -765,7 +765,7 @@ func (rr *RR_NAPTR) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_NAPTR) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_NAPTR) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Order, "Order", "") &&
 		f(&rr.Pref, "Pref", "") &&
@@ -807,7 +807,7 @@ func (rr *RR_CERT) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_CERT) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_CERT) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Type, "Type", "") &&
 		f(&rr.KeyTag, "KeyTag", "") &&
@@ -841,7 +841,7 @@ func (rr *RR_DNAME) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_DNAME) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_DNAME) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Target, "Target", "domain")
 }
 
@@ -867,7 +867,7 @@ func (rr *RR_A) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_A) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_A) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.A, "A", "a")
 }
 
@@ -892,7 +892,7 @@ func (rr *RR_AAAA) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_AAAA) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_AAAA) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.AAAA, "AAAA", "aaaa")
 }
 
@@ -923,7 +923,7 @@ func (rr *RR_LOC) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_LOC) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_LOC) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Version, "Version", "") &&
 		f(&rr.Size, "Size", "") &&
@@ -1004,7 +1004,7 @@ func (rr *RR_RRSIG) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_RRSIG) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_RRSIG) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.TypeCovered, "TypeCovered", "") &&
 		f(&rr.Algorithm, "Algorithm", "") &&
@@ -1048,7 +1048,7 @@ func (rr *RR_NSEC) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_NSEC) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_NSEC) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.NextDomain, "NextDomain", "domain") &&
 		f(rr.TypeBitMap, "TypeBitMap", "nsec")
@@ -1088,7 +1088,7 @@ func (rr *RR_DS) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_DS) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_DS) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.KeyTag, "KeyTag", "") &&
 		f(&rr.Algorithm, "Algorithm", "") &&
@@ -1123,7 +1123,7 @@ func (rr *RR_DLV) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_DLV) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_DLV) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.KeyTag, "KeyTag", "") &&
 		f(&rr.Algorithm, "Algorithm", "") &&
@@ -1156,7 +1156,7 @@ func (rr *RR_KX) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_KX) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_KX) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Pref, "Pref", "") &&
 		f(rr.Exchanger, "Exchanger", "domain")
@@ -1187,7 +1187,7 @@ func (rr *RR_TA) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_TA) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_TA) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.KeyTag, "KeyTag", "") &&
 		f(&rr.Algorithm, "Algorithm", "") &&
@@ -1220,7 +1220,7 @@ func (rr *RR_TALINK) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_TALINK) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_TALINK) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.PreviousName, "PreviousName", "domain") &&
 		f(&rr.NextName, "NextName", "domain")
@@ -1250,7 +1250,7 @@ func (rr *RR_SSHFP) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_SSHFP) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_SSHFP) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Algorithm, "Algorithm", "") &&
 		f(&rr.Type, "Type", "") &&
@@ -1284,7 +1284,7 @@ func (rr *RR_IPSECKEY) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_IPSECKEY) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_IPSECKEY) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Precedence, "Precedence", "") &&
 		f(&rr.GatewayType, "GatewayType", "") &&
@@ -1322,7 +1322,7 @@ func (rr *RR_DNSKEY) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_DNSKEY) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_DNSKEY) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Flags, "Flags", "") &&
 		f(&rr.Protocol, "Protocol", "") &&
@@ -1362,7 +1362,7 @@ func (rr *RR_NSEC3) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_NSEC3) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_NSEC3) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Hash, "Hash", "") &&
 		f(&rr.Flags, "Flags", "") &&
@@ -1413,7 +1413,7 @@ func (rr *RR_NSEC3PARAM) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_NSEC3PARAM) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_NSEC3PARAM) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Hash, "Hash", "") &&
 		f(&rr.Flags, "Flags", "") &&
@@ -1456,7 +1456,7 @@ func (rr *RR_TKEY) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_TKEY) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_TKEY) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Algorithm, "Algorithm", "domain") &&
 		f(&rr.Inception, "Inception", "") &&
@@ -1493,7 +1493,7 @@ func (rr *RR_RFC3597) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_RFC3597) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_RFC3597) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Rdata, "Rdata", "hex")
 }
 
@@ -1522,7 +1522,7 @@ func (rr *RR_URI) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_URI) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_URI) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Priority, "Priority", "") &&
 		f(&rr.Weight, "Weight", "") &&
@@ -1552,7 +1552,7 @@ func (rr *RR_DHCID) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_DHCID) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_DHCID) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) && f(&rr.Digest, "Digest", "base64")
 }
 
@@ -1581,7 +1581,7 @@ func (rr *RR_TLSA) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_TLSA) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_TLSA) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Usage, "Usage", "") &&
 		f(&rr.Selector, "Selector", "") &&
@@ -1619,7 +1619,7 @@ func (rr *RR_HIP) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_HIP) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_HIP) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.HitLength, "HitLength", "") &&
 		f(&rr.PublicKeyAlgorithm, "PublicKeyAlgorithm", "") &&
@@ -1665,7 +1665,7 @@ func (rr *RR_WKS) Header() *RR_Header {
 	return &rr.Hdr
 }
 
-func (rr *RR_WKS) Walk(f func(v interface{}, name, tag string) bool) bool {
+func (rr *RR_WKS) Walk(f func(v interface{}, name, tag string) error) error {
 	return rr.Hdr.Walk(f) &&
 		f(&rr.Address, "Address", "a") &&
 		f(&rr.Protocol, "Protocol", "") &&
