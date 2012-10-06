@@ -36,6 +36,9 @@ var (
 	printf   *bool
 	compress *bool
 	tsig     *string
+	headera  dns.RR_Header = dns.RR_Header{Name: dom, Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 0}
+	headera4 dns.RR_Header = dns.RR_Header{Name: dom, Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 0}
+	headert  dns.RR_Header = dns.RR_Header{Name: dom, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 0}
 )
 
 const dom = "whoami.miek.nl."
@@ -64,16 +67,16 @@ func handleReflect(w dns.ResponseWriter, r *dns.Msg) {
 
 	if v4 {
 		rr = new(dns.RR_A)
-		rr.(*dns.RR_A).Hdr = dns.RR_Header{Name: dom, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 0}
+		rr.(*dns.RR_A).Hdr = headera
 		rr.(*dns.RR_A).A = a.To4()
 	} else {
 		rr = new(dns.RR_AAAA)
-		rr.(*dns.RR_AAAA).Hdr = dns.RR_Header{Name: dom, Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 0}
+		rr.(*dns.RR_AAAA).Hdr = headera4
 		rr.(*dns.RR_AAAA).AAAA = a
 	}
 
 	t := new(dns.RR_TXT)
-	t.Hdr = dns.RR_Header{Name: dom, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 0}
+	t.Hdr = headert
 	t.Txt = []string{str}
 
 	switch r.Question[0].Qtype {
@@ -169,7 +172,7 @@ func main() {
 forever:
 	for {
 		select {
-		case s:=<-sig:
+		case s := <-sig:
 			fmt.Printf("Signal (%d) received, stopping\n", s)
 			break forever
 		}
