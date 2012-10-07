@@ -402,7 +402,7 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 					for i := 0; i < le; i++ {
 						msg[off+i] = element[i]
 					}
-					off += len(element)
+					off += le
 				}
 			}
 		case []EDNS0:
@@ -600,15 +600,16 @@ func PackStruct(any dnsStruct, msg []byte, off int, compression map[string]int, 
 				fallthrough
 			case "":
 				// Counted string: 1 byte length.
-				if len(s) > 255 || off+1+len(s) > lenmsg {
+				ls := len(s)
+				if ls > 255 || off+1+ls > lenmsg {
 					return ErrShortBuf
 				}
-				msg[off] = byte(len(s))
+				msg[off] = byte(ls)
 				off++
-				for i := 0; i < len(s); i++ {
+				for i := 0; i < ls; i++ {
 					msg[off+i] = s[i]
 				}
-				off += len(s)
+				off += ls
 			}
 		}
 		return nil
@@ -689,7 +690,7 @@ func UnpackStruct(any dnsStruct, msg []byte, off int) (off1 int, err error) {
 		case *net.IP:
 			switch tag {
 			case "a":
-				if off+net.IPv4len > len(msg) {
+				if off+net.IPv4len > lenmsg {
 					return ErrShortBuf
 				}
 				*fv = net.IPv4(msg[off], msg[off+1], msg[off+2], msg[off+3])
