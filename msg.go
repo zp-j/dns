@@ -25,41 +25,42 @@ import (
 const maxCompressionOffset = 2 << 13 // We have 14 bits for the compression pointer
 
 var (
-	ErrFqdn        error = &Error{Err: "dns: name must be fully qualified"}
-	ErrId          error = &Error{Err: "dns: id mismatch"}
-	ErrTag         error = &Error{Err: "dns: unknown tag"}
-	ErrFmt         error = &Error{Err: "dns: illegal RR format"}
-	ErrBuf         error = &Error{Err: "dns: buffer size too large"}
-	ErrShortBuf    error = &Error{Err: "dns: buffer size too small"}
-	ErrShortRead   error = &Error{Err: "dns: short read"}
-	ErrLoop        error = &Error{Err: "dns: too many message pointers"}
-	ErrBit         error = &Error{Err: "dns: illegal bits in message"}
-	ErrConn        error = &Error{Err: "dns: conn holds both UDP and TCP connection"}
-	ErrConnEmpty   error = &Error{Err: "dns: conn has no connection"}
-	ErrServ        error = &Error{Err: "dns: no servers could be reached"}
-	ErrKey         error = &Error{Err: "dns: bad key"}
-	ErrPrivKey     error = &Error{Err: "dns: bad private key"}
-	ErrKeySize     error = &Error{Err: "dns: bad key size"}
-	ErrKeyAlg      error = &Error{Err: "dns: bad key algorithm"}
-	ErrAlg         error = &Error{Err: "dns: bad algorithm"}
-	ErrTime        error = &Error{Err: "dns: bad time"}
-	ErrNoSig       error = &Error{Err: "dns: no signature found"}
-	ErrSig         error = &Error{Err: "dns: bad signature"}
-	ErrSecret      error = &Error{Err: "dns: no secrets defined"}
-	ErrSigGen      error = &Error{Err: "dns: bad signature generation"}
-	ErrAuth        error = &Error{Err: "dns: bad authentication"}
-	ErrSoa         error = &Error{Err: "dns: no SOA"}
-	ErrHandle      error = &Error{Err: "dns: handle is nil"}
-	ErrChan        error = &Error{Err: "dns: channel is nil"}
-	ErrName        error = &Error{Err: "dns: type not found for name"}
-	ErrRRset       error = &Error{Err: "dns: invalid rrset"}
-	ErrDenialNsec3 error = &Error{Err: "dns: no NSEC3 records"}
-	ErrDenialCe    error = &Error{Err: "dns: no matching closest encloser found"}
-	ErrDenialNc    error = &Error{Err: "dns: no covering NSEC3 found for next closer"}
-	ErrDenialSo    error = &Error{Err: "dns: no covering NSEC3 found for source of synthesis"}
-	ErrDenialBit   error = &Error{Err: "dns: type not denied in NSEC3 bitmap"}
-	ErrDenialWc    error = &Error{Err: "dns: wildcard exist, but closest encloser is denied"}
-	ErrDenialHdr   error = &Error{Err: "dns: message rcode conflicts with message content"}
+	ErrFqdn        error = &Error{Err: "name must be fully qualified"}
+	ErrId          error = &Error{Err: "id mismatch"}
+	ErrTag         error = &Error{Err: "unknown tag"}
+	ErrFmt         error = &Error{Err: "illegal RR format"}
+	ErrNil	       error = &Error{Err: "nil message or RR"}
+	ErrBuf         error = &Error{Err: "buffer size too large"}
+	ErrShortBuf    error = &Error{Err: "buffer size too small"}
+	ErrShortRead   error = &Error{Err: "short read"}
+	ErrLoop        error = &Error{Err: "too many message pointers"}
+	ErrBit         error = &Error{Err: "illegal bits in message"}
+	ErrConn        error = &Error{Err: "conn holds both UDP and TCP connection"}
+	ErrConnEmpty   error = &Error{Err: "conn has no connection"}
+	ErrServ        error = &Error{Err: "no servers could be reached"}
+	ErrKey         error = &Error{Err: "bad key"}
+	ErrPrivKey     error = &Error{Err: "bad private key"}
+	ErrKeySize     error = &Error{Err: "bad key size"}
+	ErrKeyAlg      error = &Error{Err: "bad key algorithm"}
+	ErrAlg         error = &Error{Err: "bad algorithm"}
+	ErrTime        error = &Error{Err: "bad time"}
+	ErrNoSig       error = &Error{Err: "no signature found"}
+	ErrSig         error = &Error{Err: "bad signature"}
+	ErrSecret      error = &Error{Err: "no secrets defined"}
+	ErrSigGen      error = &Error{Err: "bad signature generation"}
+	ErrAuth        error = &Error{Err: "bad authentication"}
+	ErrSoa         error = &Error{Err: "no SOA"}
+	ErrHandle      error = &Error{Err: "handle is nil"}
+	ErrChan        error = &Error{Err: "channel is nil"}
+	ErrName        error = &Error{Err: "type not found for name"}
+	ErrRRset       error = &Error{Err: "invalid rrset"}
+	ErrDenialNsec3 error = &Error{Err: "no NSEC3 records"}
+	ErrDenialCe    error = &Error{Err: "no matching closest encloser found"}
+	ErrDenialNc    error = &Error{Err: "no covering NSEC3 found for next closer"}
+	ErrDenialSo    error = &Error{Err: "no covering NSEC3 found for source of synthesis"}
+	ErrDenialBit   error = &Error{Err: "type not denied in NSEC3 bitmap"}
+	ErrDenialWc    error = &Error{Err: "wildcard exist, but closest encloser is denied"}
+	ErrDenialHdr   error = &Error{Err: "message rcode conflicts with message content"}
 )
 
 // A manually-unpacked version of (id, bits).
@@ -997,7 +998,7 @@ func packBase32(s []byte) ([]byte, error) {
 // Resource record packer.
 func PackRR(rr RR, msg []byte, off int, compression map[string]int, compress bool) (off1 int, err error) {
 	if rr == nil {
-		return len(msg), ErrFmt
+		return len(msg), ErrNil
 	}
 
 	off1, err = PackStruct(rr, msg, off, compression, compress)
@@ -1020,11 +1021,10 @@ func UnpackRR(msg []byte, off int) (rr RR, off1 int, err error) {
 	}
 	end := off + int(h.Rdlength)
 	// make an rr of that type and re-unpack.
-	mk, known := rr_mk[h.Rrtype]
-	if !known {
-		rr = new(RR_RFC3597)
-	} else {
+	if mk, known := rr_mk[h.Rrtype]; known {
 		rr = mk()
+	} else {
+		rr = new(RR_RFC3597)
 	}
 	off, err = UnpackStruct(rr, msg, off0)
 	if off != end {
@@ -1106,7 +1106,7 @@ func (h *MsgHdr) String() string {
 // If the dns.Compress is true the message will be in compressed wire format.
 func (dns *Msg) Pack() (msg []byte, err error) {
 	if dns == nil {
-		return nil, ErrFmt
+		return nil, ErrNil
 	}
 	var dh Header
 	compression := make(map[string]int) // Compression pointer mappings

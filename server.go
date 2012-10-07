@@ -286,7 +286,7 @@ func (srv *Server) ListenAndServe() error {
 		}
 		return srv.serveUDP(l)
 	}
-	return &Error{Err: "bad network"}
+	return &Error{Err: "dns: bad network"}
 }
 
 // serveTCP starts a TCP listener for the server.
@@ -421,7 +421,7 @@ func (c *conn) serve() {
 func (w *response) Write(m *Msg) (err error) {
 	var data []byte
 	if m == nil {
-		return &Error{Err: "nil message"}
+		return ErrNil
 	}
 	if t := m.IsTsig(); t != nil {
 		data, w.tsigRequestMAC, err = TsigGenerate(m, w.conn.tsigSecret[t.Hdr.Name], w.tsigRequestMAC, w.tsigTimersOnly)
@@ -440,7 +440,7 @@ func (w *response) Write(m *Msg) (err error) {
 // WriteBuf implements the ResponseWriter.WriteBuf method.
 func (w *response) WriteBuf(m []byte) (err error) {
 	if m == nil {
-		return &Error{Err: "nil message"}
+		return ErrNil
 	}
 	switch {
 	case w.conn._UDP != nil:
