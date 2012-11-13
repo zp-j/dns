@@ -1117,7 +1117,9 @@ func (h *MsgHdr) String() string {
 
 // Pack packs a Msg: it is converted to to wire format.
 // If the dns.Compress is true the message will be in compressed wire format.
-func (dns *Msg) Pack() (msg []byte, err error) {
+// The buffer msg must be large enough to hold the binary message. See
+// Len() for getting a good estimate.
+func (dns *Msg) Pack(msg []byte) (err error) {
 	var dh Header
 	var compression map[string]int
 	if dns.Compress {
@@ -1165,8 +1167,8 @@ func (dns *Msg) Pack() (msg []byte, err error) {
 	dh.Nscount = uint16(len(ns))
 	dh.Arcount = uint16(len(extra))
 
-	// TODO(mg): still a little too much, but better than 64K...
-	msg = make([]byte, dns.Len()+10)
+//	// TODO(mg): still a little too much, but better than 64K...
+//	msg = make([]byte, dns.Len()+10)
 
 	// Pack it in: header and then the pieces.
 	off := 0

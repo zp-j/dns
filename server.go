@@ -437,6 +437,7 @@ func (w *response) Write(m []byte) (n int, err error) {
 		if len(m) > MaxMsgSize {
 			return 0, &Error{Err: "message too large"}
 		}
+		// This is still killing, TODO(mg): make faster
 		l := make([]byte, 2)
 		l[0], l[1] = packUint16(uint16(len(m)))
 		m = append(l, m...)
