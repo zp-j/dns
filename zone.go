@@ -23,7 +23,7 @@ type Zone struct {
 	wildcard     int          // Whenever we see a wildcard name, this is incremented
 	expired      bool         // Slave zone is expired
 	modified     time.Time    // last modified time
-	nsec3data    *radix.Radix // Tree holding the nsec3 names
+	nsec3Radix   *radix.Radix // Tree holding the nsec3 names
 	*radix.Radix              // Zone data
 	*sync.RWMutex
 }
@@ -88,7 +88,7 @@ func NewZone(origin string) *Zone {
 	z.Origin = Fqdn(strings.ToLower(origin))
 	z.olabels = SplitLabels(z.Origin)
 	z.Radix = radix.New()
-	z.nsec3data = radix.New()
+	z.nsec3Radix = radix.New()
 	z.RWMutex = new(sync.RWMutex)
 	return z
 }
@@ -233,6 +233,9 @@ func (z *Zone) Insert(r RR) error {
 			zd.RR[t] = append(zd.RR[t], r)
 			if t == TypeNSEC3 {
 				z.Nsec3 = true
+				// The base32 encoding of the  20 bytes, is 32 bytes long
+				// if name > length error bla bla
+				z.nsec3Radix.Insert(r.Header().Name[:33], true)
 			}
 		}
 		z.Radix.Insert(key, zd)
@@ -258,6 +261,7 @@ func (z *Zone) Insert(r RR) error {
 		zd.Value.(*ZoneData).RR[t] = append(zd.Value.(*ZoneData).RR[t], r)
 		if t == TypeNSEC3 {
 			z.Nsec3 = true
+			z.nsec3Radix.Insert(r.Header().Name[:33], true)
 		}
 	}
 	return nil
