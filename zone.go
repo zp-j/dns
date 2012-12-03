@@ -16,13 +16,15 @@ import (
 // Zone represents a DNS zone. It's safe for concurrent use by 
 // multilpe goroutines.
 type Zone struct {
-	Origin       string   // Origin of the zone
-	olabels      []string // origin cut up in labels, just to speed up the isSubDomain method
-	Wildcard     int      // Whenever we see a wildcard name, this is incremented
-	*radix.Radix          // Zone data
+	Origin       string    // Origin of the zone
+	olabels      []string  // origin cut up in labels, just to speed up the isSubDomain method
+	dnssec       bool      // Is this a dnssec zone? If the rrsig(DNSKEY) is seen, yes is assumed
+	wildcard     int       // Whenever we see a wildcard name, this is incremented
+	expired      bool      // Slave zone is expired
+	modified     time.Time // last modified time
+	nsec3        int64     // count nsec3 records, if zero, we only do nsec (if doing DNSSEC at all)
+	*radix.Radix           // Zone data
 	*sync.RWMutex
-	expired bool // Slave zone is expired
-	// Do we need a timemodified?
 }
 
 type uint16Slice []uint16
@@ -209,7 +211,7 @@ func (z *Zone) Insert(r RR) error {
 		defer z.Unlock()
 		// Check if it's a wildcard name
 		if len(r.Header().Name) > 1 && r.Header().Name[0] == '*' && r.Header().Name[1] == '.' {
-			z.Wildcard++
+			z.wildcard++
 		}
 		zd := NewZoneData(r.Header().Name)
 		switch t := r.Header().Rrtype; t {
@@ -296,9 +298,9 @@ func (z *Zone) Remove(r RR) error {
 	}
 
 	if len(r.Header().Name) > 1 && r.Header().Name[0] == '*' && r.Header().Name[1] == '.' {
-		z.Wildcard--
-		if z.Wildcard < 0 {
-			z.Wildcard = 0
+		z.wildcard--
+		if z.wildcard < 0 {
+			z.wildcard = 0
 		}
 	}
 	if len(zd.Value.(*ZoneData).RR) == 0 && len(zd.Value.(*ZoneData).Signatures) == 0 {
@@ -316,9 +318,9 @@ func (z *Zone) RemoveName(s string) error {
 	defer z.Unlock()
 	z.Radix.Remove(key)
 	if len(s) > 1 && s[0] == '*' && s[1] == '.' {
-		z.Wildcard--
-		if z.Wildcard < 0 {
-			z.Wildcard = 0
+		z.wildcard--
+		if z.wildcard < 0 {
+			z.wildcard = 0
 		}
 	}
 	return nil
