@@ -17,12 +17,12 @@ import (
 // multilpe goroutines.
 type Zone struct {
 	Origin       string    // Origin of the zone
+	Dnssec       bool      // Is this a DNSSEC zone? If the rrsig(DNSKEY) is seen, this is set to true
 	olabels      []string  // origin cut up in labels, just to speed up the isSubDomain method
-	dnssec       bool      // Is this a dnssec zone? If the rrsig(DNSKEY) is seen, yes is assumed
 	wildcard     int       // Whenever we see a wildcard name, this is incremented
 	expired      bool      // Slave zone is expired
 	modified     time.Time // last modified time
-	nsec3        int64     // count nsec3 records, if zero, we only do nsec (if doing DNSSEC at all)
+	nsec3        bool     //  When dnssec is true, this holds wether we do nsec3 (true) of nsec (false)
 	*radix.Radix           // Zone data
 	*sync.RWMutex
 }
@@ -218,6 +218,9 @@ func (z *Zone) Insert(r RR) error {
 		case TypeRRSIG:
 			sigtype := r.(*RR_RRSIG).TypeCovered
 			zd.Signatures[sigtype] = append(zd.Signatures[sigtype], r.(*RR_RRSIG))
+			if sigtype == typeDNSKEY {
+				z.Dnssec = true
+			}
 		case TypeNS:
 			// NS records with other names than z.Origin are non-auth
 			if r.Header().Name != z.Origin {
