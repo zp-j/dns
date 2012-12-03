@@ -16,14 +16,15 @@ import (
 // Zone represents a DNS zone. It's safe for concurrent use by 
 // multilpe goroutines.
 type Zone struct {
-	Origin       string    // Origin of the zone
-	Dnssec       bool      // Is this a DNSSEC zone? If the rrsig(DNSKEY) is seen, this is set to true
-	olabels      []string  // origin cut up in labels, just to speed up the isSubDomain method
-	wildcard     int       // Whenever we see a wildcard name, this is incremented
-	expired      bool      // Slave zone is expired
-	modified     time.Time // last modified time
-	nsec3        bool     //  When dnssec is true, this holds wether we do nsec3 (true) of nsec (false)
-	*radix.Radix           // Zone data
+	Origin       string       // Origin of the zone
+	Dnssec       bool         // Is this a DNSSEC zone? If the rrsig(DNSKEY) is seen, this is set to true
+	Nsec3        bool         //  When Dnssec is true, this holds wether we do nsec3 (true) of nsec (false)
+	olabels      []string     // origin cut up in labels, just to speed up the isSubDomain method
+	wildcard     int          // Whenever we see a wildcard name, this is incremented
+	expired      bool         // Slave zone is expired
+	modified     time.Time    // last modified time
+	nsec3data    *radix.Radix // Tree holding the nsec3 names
+	*radix.Radix              // Zone data
 	*sync.RWMutex
 }
 
@@ -87,6 +88,7 @@ func NewZone(origin string) *Zone {
 	z.Origin = Fqdn(strings.ToLower(origin))
 	z.olabels = SplitLabels(z.Origin)
 	z.Radix = radix.New()
+	z.nsec3data = radix.New()
 	z.RWMutex = new(sync.RWMutex)
 	return z
 }
@@ -218,7 +220,7 @@ func (z *Zone) Insert(r RR) error {
 		case TypeRRSIG:
 			sigtype := r.(*RR_RRSIG).TypeCovered
 			zd.Signatures[sigtype] = append(zd.Signatures[sigtype], r.(*RR_RRSIG))
-			if sigtype == typeDNSKEY {
+			if sigtype == TypeDNSKEY {
 				z.Dnssec = true
 			}
 		case TypeNS:
@@ -229,6 +231,9 @@ func (z *Zone) Insert(r RR) error {
 			fallthrough
 		default:
 			zd.RR[t] = append(zd.RR[t], r)
+			if t == TypeNSEC3 {
+				z.Nsec3 = true
+			}
 		}
 		z.Radix.Insert(key, zd)
 		return nil
@@ -241,6 +246,9 @@ func (z *Zone) Insert(r RR) error {
 	case TypeRRSIG:
 		sigtype := r.(*RR_RRSIG).TypeCovered
 		zd.Value.(*ZoneData).Signatures[sigtype] = append(zd.Value.(*ZoneData).Signatures[sigtype], r.(*RR_RRSIG))
+		if sigtype == TypeDNSKEY {
+			z.Dnssec = true
+		}
 	case TypeNS:
 		if r.Header().Name != z.Origin {
 			zd.Value.(*ZoneData).NonAuth = true
@@ -248,6 +256,9 @@ func (z *Zone) Insert(r RR) error {
 		fallthrough
 	default:
 		zd.Value.(*ZoneData).RR[t] = append(zd.Value.(*ZoneData).RR[t], r)
+		if t == TypeNSEC3 {
+			z.Nsec3 = true
+		}
 	}
 	return nil
 }
