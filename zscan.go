@@ -28,6 +28,7 @@ const (
 	_RRTYPE
 	_OWNER
 	_CLASS
+	_COMMENT
 	_DIRORIGIN   // $ORIGIN
 	_DIRTTL      // $TTL
 	_DIRINCLUDE  // $INCLUDE
@@ -85,8 +86,13 @@ type lex struct {
 
 // Tokens are returned when a zone file is parsed.
 type Token struct {
-	RR                // the scanned resource record when error is not nil
-	Error *ParseError // when an error occured, this has the error specifics
+	// the scanned resource record when error is not nil.
+	RR
+	// All comments concatened that are seen when parsing the record.
+	// Any newlines embedded in the comments are translated to spaces.
+	Comment string
+	// when an error occured, this has the error specifics.
+	Error *ParseError
 }
 
 // NewRR reads the RR contained in the string s. Only the first RR is returned.
@@ -109,22 +115,22 @@ func ReadRR(q io.Reader, filename string) (RR, error) {
 	return r.RR, nil
 }
 
-// ParseZone reads a RFC 1035 style one from r. It returns Tokens on the 
-// returned channel, which consist out the parsed RR or an error. 
+// ParseZone reads a RFC 1035 style one from r. It returns Tokens on the
+// returned channel, which consist out the parsed RR or an error.
 // If there is an error the RR is nil. The string file is only used
 // in error reporting. The string origin is used as the initial origin, as
 // if the file would start with: $ORIGIN origin  .
 // The directives $INCLUDE, $ORIGIN, $TTL and $GENERATE are supported.
 // The channel t is closed by ParseZone when the end of r is reached.
 //
-// Basic usage pattern when reading from a string (z) containing the 
+// Basic usage pattern when reading from a string (z) containing the
 // zone data:
 //
 //	for x := range dns.ParseZone(strings.NewReader(z), "", "") {
 //		if x.Error != nil {
 //			// Do something with x.RR
 //		}
-//	}      
+//	}
 func ParseZone(r io.Reader, origin, file string) chan Token {
 	return parseZoneHelper(r, origin, file, 10000)
 }
@@ -458,6 +464,8 @@ func zlexer(s *scan, c chan lex) {
 	var l lex
 	str := make([]byte, maxTok) // Should be enough for any token
 	stri := 0                   // Offset in str (0 means empty)
+	com := make([]byte, maxTok) // Comment text
+	comi := 0
 	quote := false
 	escape := false
 	space := false
@@ -724,6 +732,8 @@ func zlexer(s *scan, c chan lex) {
 			}
 		default:
 			if commt {
+				com[comi] = x
+				comi++
 				break
 			}
 			escape = false
@@ -844,7 +854,7 @@ func appendOrigin(name, origin string) string {
 	return name + "." + origin
 }
 
-// LOC record helper function                                                                        
+// LOC record helper function
 func locCheckNorth(token string, latitude uint32) (uint32, bool) {
 	switch token {
 	case "n", "N":
@@ -855,7 +865,7 @@ func locCheckNorth(token string, latitude uint32) (uint32, bool) {
 	return latitude, false
 }
 
-// LOC record helper function                                                                        
+// LOC record helper function
 func locCheckEast(token string, longitude uint32) (uint32, bool) {
 	switch token {
 	case "e", "E":
