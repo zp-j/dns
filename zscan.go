@@ -86,10 +86,10 @@ type lex struct {
 
 // Tokens are returned when a zone file is parsed.
 type Token struct {
-	// the scanned resource record when error is not nil.
+	// The scanned resource record when error is not nil.
 	RR
-	// All comments concatened that are seen when parsing the record.
-	// Any newlines embedded in the comments are translated to spaces.
+	// Any comments seen. Comments inside RRs (as is often done in the
+	// SOA record) are discarded.
 	Comment string
 	// when an error occured, this has the error specifics.
 	Error *ParseError
@@ -152,13 +152,14 @@ func parseZone(r io.Reader, origin, f string, t chan Token, include int) {
 	c := make(chan lex, 1000)
 	// Start the lexer
 	go zlexer(s, c)
-	// 6 possible beginnings of a line, _ is a space
+	// 7 possible beginnings of a line, _ is a space
 	// 0. _RRTYPE                              -> all omitted until the rrtype
 	// 1. _OWNER _ _RRTYPE                     -> class/ttl omitted
 	// 2. _OWNER _ _STRING _ _RRTYPE           -> class omitted
 	// 3. _OWNER _ _STRING _ _CLASS  _ _RRTYPE -> ttl/class
 	// 4. _OWNER _ _CLASS  _ _RRTYPE           -> ttl omitted
 	// 5. _OWNER _ _CLASS  _ _STRING _ _RRTYPE -> class/ttl (reversed)
+	// 6. _COMMENT                             -> comments
 	// After detecting these, we know the _RRTYPE so we can jump to functions
 	// handling the rdata for each of these types.
 
@@ -498,6 +499,8 @@ func zlexer(s *scan, c chan lex) {
 			}
 			escape = false
 			if commt {
+				com[comi] = x
+				comi++
 				break
 			}
 			if stri == 0 {
