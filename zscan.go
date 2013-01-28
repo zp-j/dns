@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var _DEBUG = false // Only used when debugging the parser itself.  
+var _DEBUG = false // Only used when debugging the parser itself.
 
 const maxTok = 2048 // Largest token we can return.
 
@@ -88,8 +88,7 @@ type lex struct {
 type Token struct {
 	// The scanned resource record when error is not nil.
 	RR
-	// Any comments seen. Comments inside RRs (as is often done in the
-	// SOA record) are discarded.
+	// Any comments seen.
 	Comment string
 	// when an error occured, this has the error specifics.
 	Error *ParseError
@@ -173,9 +172,12 @@ func parseZone(r io.Reader, origin, f string, t chan Token, include int) {
 	origin = Fqdn(origin)
 
 	st := _EXPECT_OWNER_DIR // initial state
-	var h RR_Header
-	var defttl uint32 = defaultTtl
-	var prevName string
+	var (
+		defttl   uint32 = defaultTtl
+		h        RR_Header
+		prevName string
+		comment  string
+	)
 	for l := range c {
 		// Lexer spotted an error already
 		if l.err == true {
@@ -190,6 +192,9 @@ func parseZone(r io.Reader, origin, f string, t chan Token, include int) {
 			h.Class = ClassINET
 			switch l.value {
 			case _NEWLINE: // Empty line
+				st = _EXPECT_OWNER_DIR
+			case _COMMENT:
+				comment += l.token
 				st = _EXPECT_OWNER_DIR
 			case _OWNER:
 				h.Name = l.token
@@ -444,7 +449,7 @@ func parseZone(r io.Reader, origin, f string, t chan Token, include int) {
 		case _EXPECT_RDATA:
 			r, e := setRR(h, c, origin, f)
 			if e != nil {
-				// If e.lex is nil than we have encounter a unknown RR type
+				// If e.lex is nil than we have encountered a unknown RR type
 				// in that case we substitute our current lex token
 				if e.lex.token == "" && e.lex.value == 0 {
 					e.lex = l // Uh, dirty
@@ -452,12 +457,16 @@ func parseZone(r io.Reader, origin, f string, t chan Token, include int) {
 				t <- Token{Error: e}
 				return
 			}
-			t <- Token{RR: r}
+			t <- Token{RR: r, Comment: comment}
+			comment = "" // TODO(mg): allocations?
 			st = _EXPECT_OWNER_DIR
 		}
 	}
 	// If we get here, we and the h.Rrtype is still zero, we haven't parsed anything, this
 	// is not an error, because an empty zone file is still a zone file.
+	if comment != "" {
+		t <- Token{Comment: comment}
+	}
 }
 
 // zlexer scans the sourcefile and returns tokens on the channel c.
@@ -605,6 +614,8 @@ func zlexer(s *scan, c chan lex) {
 				stri = 0
 			}
 			commt = true
+			com[comi] = ';'
+			comi++
 		case '\r':
 			// discard
 			// this means it can also not be used as rdata
@@ -632,7 +643,18 @@ func zlexer(s *scan, c chan lex) {
 						fmt.Printf("[3 %+v]", l.token)
 					}
 					c <- l
+					// Also send the comment
+					l.value = _COMMENT
+					l.token = string(com[:comi])
+					if _DEBUG {
+						fmt.Printf("[8 %+v]", l.token)
+					}
+					c <- l
+					comi = 0
+					break
 				}
+				com[comi] = ' ' // convert to space
+				comi++
 				break
 			}
 
@@ -663,10 +685,18 @@ func zlexer(s *scan, c chan lex) {
 				commt = false
 				rrtype = false
 				owner = true
+				if comi > 0 {
+					l.value = _COMMENT
+					l.token = string(com[:comi])
+					c <- l
+					comi = 0
+				}
 			}
 		case '\\':
 			// quote?
 			if commt {
+				com[comi] = x
+				comi++
 				break
 			}
 			if escape {
@@ -680,6 +710,8 @@ func zlexer(s *scan, c chan lex) {
 			escape = true
 		case '"':
 			if commt {
+				com[comi] = x
+				comi++
 				break
 			}
 			if escape {
@@ -710,6 +742,8 @@ func zlexer(s *scan, c chan lex) {
 				break
 			}
 			if commt {
+				com[comi] = x
+				comi++
 				break
 			}
 			if escape {
@@ -746,9 +780,8 @@ func zlexer(s *scan, c chan lex) {
 		}
 		x, err = s.tokenText()
 	}
-	// Hmm.
-	if stri > 0 {
-		// Send remainder
+	// TODO(mg): commment!?
+	if stri > 0 { // Send remainder
 		l.token = string(str[:stri])
 		l.value = _STRING
 		if _DEBUG {
