@@ -90,18 +90,20 @@ const (
 
 type Error interface {
 	error
+	Overflow() bool
 }
+type DnsError struct{ err string }
+type OverflowError struct{ err string }
 
-type dnsError struct {
-	Err string
-}
+func (e *DnsError) Error() string       { return "dns: " + e.err }
 
-type overflowError struct {
-	Err string
-}
+// Overflow implements the Error interface, it always return false.
+func (e *DnsError) Overflow() bool      { return false }
 
-func (e *dnsError) Error() string      { return "dns: " + e.Err }
-func (e *overflowError) Error() string { return "dns: " + e.Err }
+func (e *OverflowError) Error() string  { return "dns: " + e.err }
+
+// Overflow implements the Error interface, it always return true.
+func (e *OverflowError) Overflow() bool { return true }
 
 // An RR represents a resource record.
 type RR interface {
