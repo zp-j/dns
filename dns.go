@@ -77,7 +77,6 @@
 package dns
 
 import (
-	"net"
 	"strconv"
 )
 
@@ -89,24 +88,20 @@ const (
 	defaultTtl     = 3600    // Default TTL.
 )
 
-// Error represents a DNS error
-type Error struct {
-	Err     string
-	Name    string
-	Server  net.Addr
-	Timeout bool
+type Error interface {
+	error
 }
 
-func (e *Error) Error() string {
-	if e == nil {
-		return "dns: <nil>"
-	}
-	if e.Name == "" {
-		return "dns: " + e.Err
-	}
-	return "dns: " + e.Name + ": " + e.Err
-
+type dnsError struct {
+	Err string
 }
+
+type overflowError struct {
+	Err string
+}
+
+func (e *dnsError) Error() string      { return "dns: " + e.Err }
+func (e *overflowError) Error() string { return "dns: " + e.Err }
 
 // An RR represents a resource record.
 type RR interface {
