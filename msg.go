@@ -1340,7 +1340,7 @@ func (dns *Msg) Unpack(msg []byte) (err error) {
 		}
 	}
 	if off != len(msg) {
-		return &PackingError{err: "extra bytes in dns packet :" + strconv.Itoa(off) + "<" + strconv.Itoa(len(msg))}
+		return &OverrunError{err: "extra bytes in dns packet :" + strconv.Itoa(off) + "<" + strconv.Itoa(len(msg))}
 	}
 	return nil
 }
