@@ -88,22 +88,13 @@ const (
 	defaultTtl     = 3600    // Default TTL.
 )
 
-type Error interface {
-	error
-	Overflow() bool
-}
-type DnsError struct{ err string }
-type OverflowError struct{ err string }
+type Error struct{ err string }
+type PackingError struct{ err string }
+type OverrunError struct{ err string }
 
-func (e *DnsError) Error() string { return "dns: " + e.err }
-
-// Overflow implements the Error interface, it always return false.
-func (e *DnsError) Overflow() bool { return false }
-
-func (e *OverflowError) Error() string { return "dns: " + e.err }
-
-// Overflow implements the Error interface, it always return true.
-func (e *OverflowError) Overflow() bool { return true }
+func (e *Error) Error() string        { return "dns: " + e.err }
+func (e *PackingError) Error() string { return "dns: " + e.err }
+func (e *OverrunError) Error() string { return "dns: " + e.err }
 
 // An RR represents a resource record.
 type RR interface {

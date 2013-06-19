@@ -86,9 +86,6 @@ func (e *ParseError) Error() (s string) {
 	return
 }
 
-// Overflow implements the Error interface. It always returns false.
-func (e *ParseError) Overflow() bool { return false }
-
 type lex struct {
 	token   string // text of the token
 	err     bool   // when true, token text has lexer error
