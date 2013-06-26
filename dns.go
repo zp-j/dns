@@ -160,7 +160,9 @@ func (h *RR_Header) len(compression map[string]int) int {
 	l := len(h.Name) + 1
 	l += 10 // rrtype(2) + class(2) + ttl(4) + rdlength(2)
 	if compression != nil {
-		l = l - compression[h.Name] + 1
+		if n, ok := compression[h.Name]; ok {
+			l = l - n + 1
+		}
 	}
 	return l
 }

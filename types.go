@@ -179,7 +179,7 @@ func (q *Question) String() (s string) {
 
 func (q *Question) len(compression map[string]int) int {
 	l := len(q.Name) + 1 + 4
-	if compressLen, found := compression[q.Name]; found {
+	if compressLen, ok := compression[q.Name]; ok {
 		l = l - compressLen + 1
 	}
 	return l
@@ -204,7 +204,7 @@ func (rr *CNAME) Header() *RR_Header { return &rr.Hdr }
 func (rr *CNAME) copy() RR           { return &CNAME{*rr.Hdr.copyHeader(), rr.Target} }
 func (rr *CNAME) String() string     { return rr.Hdr.String() + rr.Target }
 func (rr *CNAME) len(compression map[string]int) int {
-	if compressLen, found := compression[rr.Target]; found {
+	if compressLen, ok := compression[rr.Target]; ok {
 		return rr.Hdr.len(compression) + len(rr.Target) + 1 - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + len(rr.Target) + 1
@@ -233,7 +233,7 @@ func (rr *MB) copy() RR           { return &MB{*rr.Hdr.copyHeader(), rr.Mb} }
 
 func (rr *MB) String() string { return rr.Hdr.String() + rr.Mb }
 func (rr *MB) len(compression map[string]int) int {
-	if compressLen, found := compression[rr.Mb]; found {
+	if compressLen, ok := compression[rr.Mb]; ok {
 		return rr.Hdr.len(compression) + len(rr.Mb) + 1 - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + len(rr.Mb) + 1
@@ -252,7 +252,7 @@ func (rr *MG) String() string {
 }
 
 func (rr *MG) len(compression map[string]int) int {
-	if compressLen, found := compression[rr.Mg]; found {
+	if compressLen, ok := compression[rr.Mg]; ok {
 		return rr.Hdr.len(compression) + len(rr.Mg) + 1 - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + len(rr.Mg) + 1
@@ -273,11 +273,11 @@ func (rr *MINFO) String() string {
 
 func (rr *MINFO) len(compression map[string]int) int {
 	l := len(rr.Rmail) + 1
-	if compressLen, found := compression[rr.Rmail]; found {
+	if compressLen, ok := compression[rr.Rmail]; ok {
 		l = l - compressLen + 1
 	}
 	n := len(rr.Email) + 1
-	if compressLen, found := compression[rr.Email]; found {
+	if compressLen, ok := compression[rr.Email]; ok {
 		n = n - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + l + n
@@ -296,7 +296,7 @@ func (rr *MR) String() string {
 }
 
 func (rr *MR) len(compression map[string]int) int {
-	if compressLen, found := compression[rr.Mr]; found {
+	if compressLen, ok := compression[rr.Mr]; ok {
 		return rr.Hdr.len(compression) + len(rr.Mr) + 1 - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + len(rr.Mr) + 1
@@ -315,7 +315,7 @@ func (rr *MF) String() string {
 }
 
 func (rr *MF) len(compression map[string]int) int {
-	if compressLen, found := compression[rr.Mf]; found {
+	if compressLen, ok := compression[rr.Mf]; ok {
 		return rr.Hdr.len(compression) + len(rr.Mf) + 1 - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + len(rr.Mf) + 1
@@ -334,7 +334,7 @@ func (rr *MD) String() string {
 }
 
 func (rr *MD) len(compression map[string]int) int {
-	if compressLen, found := compression[rr.Md]; found {
+	if compressLen, ok := compression[rr.Md]; ok {
 		return rr.Hdr.len(compression) + len(rr.Md) + 1 - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + len(rr.Md) + 1
@@ -355,7 +355,7 @@ func (rr *MX) String() string {
 
 func (rr *MX) len(compression map[string]int) int {
 	l := len(rr.Mx) + 1
-	if compressLen, found := compression[rr.Mx]; found {
+	if compressLen, ok := compression[rr.Mx]; ok {
 		l = l - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + l + 2
@@ -376,7 +376,7 @@ func (rr *AFSDB) String() string {
 
 func (rr *AFSDB) len(compression map[string]int) int {
 	l := len(rr.Hostname) + 1
-	if compressLen, found := compression[rr.Hostname]; found {
+	if compressLen, ok := compression[rr.Hostname]; ok {
 		l = l - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + l + 2
@@ -413,7 +413,7 @@ func (rr *RT) String() string {
 
 func (rr *RT) len(compression map[string]int) int {
 	l := len(rr.Host) + 1
-	if compressLen, found := compression[rr.Host]; found {
+	if compressLen, ok := compression[rr.Host]; ok {
 		l = l - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + l + 2
@@ -433,7 +433,7 @@ func (rr *NS) String() string {
 
 func (rr *NS) len(compression map[string]int) int {
 	l := len(rr.Ns) + 1
-	if compressLen, found := compression[rr.Ns]; found {
+	if compressLen, ok := compression[rr.Ns]; ok {
 		l = l - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + l
@@ -453,7 +453,7 @@ func (rr *PTR) String() string {
 
 func (rr *PTR) len(compression map[string]int) int {
 	l := len(rr.Ptr) + 1
-	if compressLen, found := compression[rr.Ptr]; found {
+	if compressLen, ok := compression[rr.Ptr]; ok {
 		l = l - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + l
@@ -504,11 +504,11 @@ func (rr *SOA) String() string {
 
 func (rr *SOA) len(compression map[string]int) int {
 	l := len(rr.Ns) + 1
-	if compressLen, found := compression[rr.Ns]; found {
+	if compressLen, ok := compression[rr.Ns]; ok {
 		l = l - compressLen + 1
 	}
 	n := len(rr.Mbox) + 1
-	if compressLen, found := compression[rr.Mbox]; found {
+	if compressLen, ok := compression[rr.Mbox]; ok {
 		n = n - compressLen + 1
 	}
 	return rr.Hdr.len(compression) + l + n + 20
