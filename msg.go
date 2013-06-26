@@ -265,6 +265,7 @@ func PackDomainName(s string, msg []byte, off int, compression map[string]int, c
 			off++
 			for j := begin; j < i; j++ {
 				if off+1 > lenmsg {
+				println("BOE")
 					return lenmsg, ErrBuf
 				}
 				msg[off] = bs[j]
@@ -1257,6 +1258,7 @@ func (dns *Msg) Pack() (msg []byte, err error) {
 
 	// TODO(mg): still a little too much, but better than 64K...
 	msg = make([]byte, dns.Len()+10)
+	println("buf size allocated", dns.Len()+10)
 
 	// Pack it in: header and then the pieces.
 	off := 0

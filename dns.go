@@ -162,6 +162,7 @@ func (h *RR_Header) len(compression map[string]int) int {
 	if compression != nil {
 		if n, ok := compression[h.Name]; ok {
 			l = l - n + 1
+			println("Compressed len", l, "normal", len(h.Name)+1)
 		}
 	}
 	return l

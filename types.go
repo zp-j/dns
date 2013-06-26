@@ -179,9 +179,9 @@ func (q *Question) String() (s string) {
 
 func (q *Question) len(compression map[string]int) int {
 	l := len(q.Name) + 1 + 4
-	if compressLen, ok := compression[q.Name]; ok {
-		l = l - compressLen + 1
-	}
+	// Never! compress the question's ownername, as this is the first name
+	// in the packet. It should by definition not be compressed (it can, be we
+	// should not generate these kind of packets
 	return l
 }
 
