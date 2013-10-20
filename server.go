@@ -38,7 +38,8 @@ type ResponseWriter interface {
 	Hijack()
 }
 
-type response struct {
+// Response is a ResponseWriter.
+type Response struct {
 	hijacked       bool // connection has been hijacked by handler
 	tsigStatus     error
 	tsigTimersOnly bool
@@ -283,7 +284,7 @@ func (srv *Server) serveUDP(l *net.UDPConn) error {
 
 // Serve a new connection.
 func (srv *Server) serve(a net.Addr, h Handler, m []byte, u *net.UDPConn, t *net.TCPConn) {
-	w := &response{tsigSecret: srv.TsigSecret, udp: u, tcp: t, remoteAddr: a}
+	w := &Response{tsigSecret: srv.TsigSecret, udp: u, tcp: t, remoteAddr: a}
 	q := 0
 Redo:
 	req := new(Msg)
@@ -381,7 +382,7 @@ func (srv *Server) readUDP(conn *net.UDPConn, timeout time.Duration) ([]byte, ne
 }
 
 // WriteMsg implements the ResponseWriter.WriteMsg method.
-func (w *response) WriteMsg(m *Msg) (err error) {
+func (w *Response) WriteMsg(m *Msg) (err error) {
 	var data []byte
 	if w.tsigSecret != nil { // if no secrets, dont check for the tsig (which is a longer check)
 		if t := m.IsTsig(); t != nil {
@@ -402,7 +403,7 @@ func (w *response) WriteMsg(m *Msg) (err error) {
 }
 
 // Write implements the ResponseWriter.Write method.
-func (w *response) Write(m []byte) (int, error) {
+func (w *Response) Write(m []byte) (int, error) {
 	switch {
 	case w.udp != nil:
 		n, err := w.udp.WriteTo(m, w.remoteAddr)
@@ -434,19 +435,19 @@ func (w *response) Write(m []byte) (int, error) {
 }
 
 // RemoteAddr implements the ResponseWriter.RemoteAddr method.
-func (w *response) RemoteAddr() net.Addr { return w.remoteAddr }
+func (w *Response) RemoteAddr() net.Addr { return w.remoteAddr }
 
 // TsigStatus implements the ResponseWriter.TsigStatus method.
-func (w *response) TsigStatus() error { return w.tsigStatus }
+func (w *Response) TsigStatus() error { return w.tsigStatus }
 
 // TsigTimersOnly implements the ResponseWriter.TsigTimersOnly method.
-func (w *response) TsigTimersOnly(b bool) { w.tsigTimersOnly = b }
+func (w *Response) TsigTimersOnly(b bool) { w.tsigTimersOnly = b }
 
 // Hijack implements the ResponseWriter.Hijack method.
-func (w *response) Hijack() { w.hijacked = true }
+func (w *Response) Hijack() { w.hijacked = true }
 
 // Close implements the ResponseWriter.Close method
-func (w *response) Close() error {
+func (w *Response) Close() error {
 	// Can't close the udp conn, as that is actually the listener.
 	if w.tcp != nil {
 		e := w.tcp.Close()
