@@ -38,6 +38,18 @@ type ResponseWriter interface {
 	Hijack()
 }
 
+type Ratelimiter interface {
+	// Count counts against this remote address with this
+	// request and this reply packet.
+	Count(remote net.Addr, req *Msg, reply *Msg)
+	// Blocked returns a integer which tells if this reply should be dropped, a 
+	// truncated answer or the normal reply should be send back to the client. If
+	// the query should be dropped it should return -1, if the query should be send
+	// as-is, 0 must be returned and if a truncated query should be send a 1 must be
+	// returned.
+	Blocked(remote net.Addr, reply *Msg) int
+}
+
 type response struct {
 	hijacked       bool // connection has been hijacked by handler
 	tsigStatus     error
@@ -47,6 +59,7 @@ type response struct {
 	udp            *net.UDPConn      // i/o connection if UDP was used
 	tcp            *net.TCPConn      // i/o connection if TCP was used
 	remoteAddr     net.Addr          // address of the client
+	limiter        Ratelimiter
 }
 
 // ServeMux is an DNS request multiplexer. It matches the
@@ -197,6 +210,7 @@ type Server struct {
 	WriteTimeout time.Duration        // the net.Conn.SetWriteTimeout value for new connections
 	IdleTimeout  func() time.Duration // TCP idle timeout for multilpe queries, if nil, defaults to 8 * time.Second (RFC 5966)
 	TsigSecret   map[string]string    // secret(s) for Tsig map[<zonename>]<base64 secret>
+	Ratelimiter
 }
 
 // ListenAndServe starts a nameserver on the configured address in *Server.
@@ -283,7 +297,7 @@ func (srv *Server) serveUDP(l *net.UDPConn) error {
 
 // Serve a new connection.
 func (srv *Server) serve(a net.Addr, h Handler, m []byte, u *net.UDPConn, t *net.TCPConn) {
-	w := &response{tsigSecret: srv.TsigSecret, udp: u, tcp: t, remoteAddr: a}
+	w := &response{tsigSecret: srv.TsigSecret, udp: u, tcp: t, remoteAddr: a, limiter: srv.Ratelimiter}
 	q := 0
 Redo:
 	req := new(Msg)
@@ -383,6 +397,8 @@ func (srv *Server) readUDP(conn *net.UDPConn, timeout time.Duration) ([]byte, ne
 // WriteMsg implements the ResponseWriter.WriteMsg method.
 func (w *response) WriteMsg(m *Msg) (err error) {
 	var data []byte
+	if w.limiter != nil {
+	}
 	if w.tsigSecret != nil { // if no secrets, dont check for the tsig (which is a longer check)
 		if t := m.IsTsig(); t != nil {
 			data, w.tsigRequestMAC, err = TsigGenerate(m, w.tsigSecret[t.Hdr.Name], w.tsigRequestMAC, w.tsigTimersOnly)
