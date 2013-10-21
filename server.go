@@ -38,8 +38,21 @@ type ResponseWriter interface {
 	Hijack()
 }
 
-// Response is a ResponseWriter.
-type Response struct {
+// Ratelimiter is enforced in the WriteMsg method, calling Write directly will bypass any
+// ratelimiting.
+type Ratelimiter interface {
+	// Count counts against this remote address with this
+	// request and this reply packet.
+	Count(remote net.Addr, req, reply *Msg)
+	// Blocked returns a integer which tells if this reply should be dropped, a 
+	// truncated answer or the normal reply should be send back to the client. If
+	// the query should be dropped it should return -1, if the query should be send
+	// as-is, 0 must be returned and if a truncated query should be send a 1 must be
+	// returned.
+	Blocked(remote net.Addr, reply *Msg) int
+}
+
+type response struct {
 	hijacked       bool // connection has been hijacked by handler
 	tsigStatus     error
 	tsigTimersOnly bool
@@ -48,6 +61,7 @@ type Response struct {
 	udp            *net.UDPConn      // i/o connection if UDP was used
 	tcp            *net.TCPConn      // i/o connection if TCP was used
 	remoteAddr     net.Addr          // address of the client
+	limiter        Ratelimiter
 }
 
 // ServeMux is an DNS request multiplexer. It matches the
@@ -198,6 +212,7 @@ type Server struct {
 	WriteTimeout time.Duration        // the net.Conn.SetWriteTimeout value for new connections
 	IdleTimeout  func() time.Duration // TCP idle timeout for multilpe queries, if nil, defaults to 8 * time.Second (RFC 5966)
 	TsigSecret   map[string]string    // secret(s) for Tsig map[<zonename>]<base64 secret>
+	Ratelimiter
 }
 
 // ListenAndServe starts a nameserver on the configured address in *Server.
@@ -284,7 +299,7 @@ func (srv *Server) serveUDP(l *net.UDPConn) error {
 
 // Serve a new connection.
 func (srv *Server) serve(a net.Addr, h Handler, m []byte, u *net.UDPConn, t *net.TCPConn) {
-	w := &Response{tsigSecret: srv.TsigSecret, udp: u, tcp: t, remoteAddr: a}
+	w := &response{tsigSecret: srv.TsigSecret, udp: u, tcp: t, remoteAddr: a, limiter: srv.Ratelimiter}
 	q := 0
 Redo:
 	req := new(Msg)
@@ -382,8 +397,10 @@ func (srv *Server) readUDP(conn *net.UDPConn, timeout time.Duration) ([]byte, ne
 }
 
 // WriteMsg implements the ResponseWriter.WriteMsg method.
-func (w *Response) WriteMsg(m *Msg) (err error) {
+func (w *response) WriteMsg(m *Msg) (err error) {
 	var data []byte
+	if w.limiter != nil {
+	}
 	if w.tsigSecret != nil { // if no secrets, dont check for the tsig (which is a longer check)
 		if t := m.IsTsig(); t != nil {
 			data, w.tsigRequestMAC, err = TsigGenerate(m, w.tsigSecret[t.Hdr.Name], w.tsigRequestMAC, w.tsigTimersOnly)
@@ -403,7 +420,7 @@ func (w *Response) WriteMsg(m *Msg) (err error) {
 }
 
 // Write implements the ResponseWriter.Write method.
-func (w *Response) Write(m []byte) (int, error) {
+func (w *response) Write(m []byte) (int, error) {
 	switch {
 	case w.udp != nil:
 		n, err := w.udp.WriteTo(m, w.remoteAddr)
@@ -435,19 +452,19 @@ func (w *Response) Write(m []byte) (int, error) {
 }
 
 // RemoteAddr implements the ResponseWriter.RemoteAddr method.
-func (w *Response) RemoteAddr() net.Addr { return w.remoteAddr }
+func (w *response) RemoteAddr() net.Addr { return w.remoteAddr }
 
 // TsigStatus implements the ResponseWriter.TsigStatus method.
-func (w *Response) TsigStatus() error { return w.tsigStatus }
+func (w *response) TsigStatus() error { return w.tsigStatus }
 
 // TsigTimersOnly implements the ResponseWriter.TsigTimersOnly method.
-func (w *Response) TsigTimersOnly(b bool) { w.tsigTimersOnly = b }
+func (w *response) TsigTimersOnly(b bool) { w.tsigTimersOnly = b }
 
 // Hijack implements the ResponseWriter.Hijack method.
-func (w *Response) Hijack() { w.hijacked = true }
+func (w *response) Hijack() { w.hijacked = true }
 
 // Close implements the ResponseWriter.Close method
-func (w *Response) Close() error {
+func (w *response) Close() error {
 	// Can't close the udp conn, as that is actually the listener.
 	if w.tcp != nil {
 		e := w.tcp.Close()
