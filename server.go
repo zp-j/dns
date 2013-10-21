@@ -38,6 +38,8 @@ type ResponseWriter interface {
 	Hijack()
 }
 
+// Ratelimiter is enforced in the WriteMsg method, calling Write directly will bypass any
+// ratelimiting.
 type Ratelimiter interface {
 	// Count counts against this remote address with this
 	// request and this reply packet.
