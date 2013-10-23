@@ -44,11 +44,9 @@ type Ratelimiter interface {
 	// Count counts against this remote address with this
 	// request and this reply packet.
 	Count(remote net.Addr, req, reply *Msg)
-	// Blocked returns a integer which tells if this reply should be dropped, a 
-	// truncated answer or the normal reply should be send back to the client. If
-	// the query should be dropped it should return -1, if the query should be send
-	// as-is, 0 must be returned and if a truncated query should be send a 1 must be
-	// returned.
+	// Blocked returns a integer which tells if this reply should be dropped (-1), a 
+	// a normal reply should be send back to the client (1) or a truncated answer 
+	// should be send back (1).
 	Blocked(remote net.Addr, reply *Msg) int
 }
 
