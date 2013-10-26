@@ -55,7 +55,7 @@ type rrlRequest struct {
 type ResponseRatelimit struct {
 	block              [BUCKETSIZE]*rrlBucket
 	serialize          chan *rrlRequest
-	Window             int
+	Window             time.Duration
 	ResponsesPerSecond int
 	ErrorsPerSecond    int
 	LeakRate           int
