@@ -390,6 +390,7 @@ func (w *response) WriteMsg(m *Msg) (err error) {
 			return
 		case 1: // tc
 			tc := new(Msg)
+			tc.Id = m.Id
 			tc.Truncated = true
 			if d, e := tc.Pack(); e != nil {
 				return e
