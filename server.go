@@ -38,18 +38,6 @@ type ResponseWriter interface {
 	Hijack()
 }
 
-// Ratelimiter is enforced in the WriteMsg method, calling Write directly will bypass any
-// ratelimiting.
-type Ratelimiter interface {
-	// Count counts against this remote address with this
-	// request and this reply packet.
-	Count(remote net.Addr, req, reply *Msg)
-	// Blocked returns a integer which tells if this reply should be dropped (-1), a
-	// a normal reply should be send back to the client (1) or a truncated answer
-	// should be send back (1).
-	Blocked(remote net.Addr, reply *Msg) int
-}
-
 type response struct {
 	hijacked       bool // connection has been hijacked by handler
 	tsigStatus     error
@@ -396,10 +384,22 @@ func (srv *Server) readUDP(conn *net.UDPConn, timeout time.Duration) ([]byte, ne
 
 // WriteMsg implements the ResponseWriter.WriteMsg method.
 func (w *response) WriteMsg(m *Msg) (err error) {
-	var data []byte
 	if w.limiter != nil {
-		// ...
+		switch w.limiter.Block(w.RemoteAddr(), m) {
+		case -1: // drop
+			return
+		case 1: // tc
+			tc := new(Msg)
+			tc.Truncated = true
+			if d, e := tc.Pack(); e != nil {
+				return e
+			} else {
+				_, e = w.Write(d)
+				return e
+			}
+		}
 	}
+	var data []byte
 	if w.tsigSecret != nil { // if no secrets, dont check for the tsig (which is a longer check)
 		if t := m.IsTsig(); t != nil {
 			data, w.tsigRequestMAC, err = TsigGenerate(m, w.tsigSecret[t.Hdr.Name], w.tsigRequestMAC, w.tsigTimersOnly)
