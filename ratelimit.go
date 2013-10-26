@@ -9,9 +9,9 @@
 package dns
 
 import (
+	"hash/adler32"
 	"net"
 	"time"
-	"hash/adler32"
 )
 
 // Ratelimiter is enforced in the WriteMsg method, calling Write directly will bypass any
@@ -26,37 +26,52 @@ type Ratelimiter interface {
 	Block(remote net.Addr, reply *Msg) int
 }
 
+// NewResponseRatelimit returns an Ratelimiter which is an implementation of
+// response rate limit (RRL) with good defaults.
+func NewResponseRatelimit() *ResponseRatelimit {
+	b := &ResponseRatelimit{Window: 5, ResponsesPerSecond: 5, ErrorsPerSecond: 5, IPv4PrefixLen: 24, IPv6PrefixLen: 56, LeakRate: 3, TruncateRate: 2}
+	b.serialize = make(chan *rrlRequest, BUCKETSIZE)
+	go b.count()
+	return b
+}
 
-const (
-	WINDOW = 5
-	BUCKETSIZE = 10000
-	LIMIT = 50
-)
+const BUCKETSIZE = 10000
 
-type bucket struct {
+type rrlBucket struct {
 	source net.Addr  // client address
 	stamp  time.Time // time of last count update
 	rate   int       // rate of the queries for this client, in qps
 	count  int       // number of requests seen in the last secnd
 }
 
-type request struct {
+type rrlRequest struct {
 	a net.Addr
 	q *Msg
 	r *Msg
 }
 
-type blocker struct {
-	block [BUCKETSIZE]*bucket
-	ch    chan *request
+// See http://ss.vix.su/~vixie/isc-tn-2012-1.txt for an explanation of the
+// different values.
+type ResponseRatelimit struct {
+	block              [BUCKETSIZE]*rrlBucket
+	serialize          chan *rrlRequest
+	Window             int
+	ResponsesPerSecond int
+	ErrorsPerSecond    int
+	LeakRate           int
+	TruncateRate       int
+	IPv4PrefixLen      int
+	IPv6PrefixLen      int
+	LogOnly            bool
+
+	// some more settings
 }
 
-// serialize the writing.
-func (b *blocker) blockerUpdate() {
+func (b *ResponseRatelimit) count() {
 	offset := 0
 	for {
 		select {
-		case r := <-b.ch:
+		case r := <-b.serialize:
 			if t, ok := r.a.(*net.UDPAddr); ok {
 				offset = int(adler32.Checksum(t.IP) % BUCKETSIZE)
 			}
@@ -64,7 +79,7 @@ func (b *blocker) blockerUpdate() {
 				offset = int(adler32.Checksum(t.IP) % BUCKETSIZE)
 			}
 			if b.block[offset] == nil { // re-initialize if source differs?
-				b.block[offset] = &bucket{r.a, time.Now(), 0, 1}
+				b.block[offset] = &rrlBucket{r.a, time.Now(), 0, 1}
 				continue
 			}
 			if time.Since(b.block[offset].stamp) < time.Second {
@@ -73,7 +88,7 @@ func (b *blocker) blockerUpdate() {
 				b.block[offset].rate = b.block[offset].count
 				continue
 			}
-			if time.Since(b.block[offset].stamp) > WINDOW*time.Second {
+			if time.Since(b.block[offset].stamp) > b.Window*time.Second {
 				b.block[offset].stamp = time.Now()
 				b.block[offset].rate = 0
 				b.block[offset].count = 1
@@ -87,11 +102,11 @@ func (b *blocker) blockerUpdate() {
 	}
 }
 
-func (b *blocker) Count(a net.Addr, q, r *Msg) {
-	b.ch <- &request{a, q, r}
+func (b *ResponseRatelimit) Count(a net.Addr, q, r *Msg) {
+	b.serialize <- &rrlRequest{a, q, r}
 }
 
-func (b *blocker) Block(a net.Addr, q *Msg) int {
+func (b *ResponseRatelimit) Block(a net.Addr, q *Msg) int {
 	offset := 0
 	if t, ok := a.(*net.UDPAddr); ok {
 		offset = int(adler32.Checksum(t.IP) % BUCKETSIZE)
@@ -102,8 +117,8 @@ func (b *blocker) Block(a net.Addr, q *Msg) int {
 	if b.block[offset] == nil {
 		return 0
 	}
-	if b.block[offset].rate > LIMIT {
-		println("HITTING LIMIT, THROTTLING")
+	if b.block[offset].rate > 50 {
+		println("HITTING 50, THROTTLING")
 		return -1
 	}
 	return 0
