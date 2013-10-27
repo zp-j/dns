@@ -198,7 +198,7 @@ type Server struct {
 	WriteTimeout time.Duration        // the net.Conn.SetWriteTimeout value for new connections
 	IdleTimeout  func() time.Duration // TCP idle timeout for multilpe queries, if nil, defaults to 8 * time.Second (RFC 5966)
 	TsigSecret   map[string]string    // secret(s) for Tsig map[<zonename>]<base64 secret>
-	Ratelimiter			  // optional ratelimiter
+	Ratelimiter                       // optional ratelimiter
 }
 
 // ListenAndServe starts a nameserver on the configured address in *Server.
