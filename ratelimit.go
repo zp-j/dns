@@ -6,6 +6,19 @@
 
 // Rate limit implementation.
 
+// RATE LIMITING
+//
+// Basic use pattern for setting up a server with rate limiting:
+//
+//	b := dns.NewResponseRatelimit()
+//	go func() {
+//		srv := &dns.Server{Addr: ":8053", Net: "udp", Ratelimiter: b}
+//		err := srv.ListenAndServe()
+//		if err != nil {
+//			log.Fatal("Failed to set tcp listener %s\n", err.Error())
+//		}
+//	}()
+//
 package dns
 
 import (
