@@ -28,9 +28,11 @@ type Ratelimiter interface {
 
 // NewResponseRatelimit returns an Ratelimiter which is an implementation of
 // response rate limit (RRL) with good defaults.
+// See http://ss.vix.su/~vixie/isc-tn-2012-1.txt for an explanation of the
+// these defaults.
 func NewResponseRatelimit() *ResponseRatelimit {
 	b := &ResponseRatelimit{Window: 5, ResponsesPerSecond: 5, ErrorsPerSecond: 5, IPv4PrefixLen: 24, IPv6PrefixLen: 56, LeakRate: 3, TruncateRate: 2}
-	b.serialize = make(chan *rrlRequest, BUCKETSIZE)
+	b.serialize = make(chan *item, BUCKETSIZE)
 	go b.count()
 	return b
 }
@@ -41,20 +43,18 @@ type rrlBucket struct {
 	source net.Addr  // client address
 	stamp  time.Time // time of last count update
 	rate   int       // rate of the queries for this client, in qps
-	count  int       // number of requests seen in the last secnd
+	count  int       // number of requests seen in the last second
 }
 
-type rrlRequest struct {
+type item struct {
 	a net.Addr
 	q *Msg
 	r *Msg
 }
 
-// See http://ss.vix.su/~vixie/isc-tn-2012-1.txt for an explanation of the
-// different values.
 type ResponseRatelimit struct {
 	block              [BUCKETSIZE]*rrlBucket
-	serialize          chan *rrlRequest
+	serialize          chan *item
 	Window             time.Duration
 	ResponsesPerSecond int
 	ErrorsPerSecond    int
@@ -63,8 +63,6 @@ type ResponseRatelimit struct {
 	IPv4PrefixLen      int
 	IPv6PrefixLen      int
 	LogOnly            bool
-
-	// some more settings
 }
 
 func (b *ResponseRatelimit) count() {
@@ -103,7 +101,7 @@ func (b *ResponseRatelimit) count() {
 }
 
 func (b *ResponseRatelimit) Count(a net.Addr, q, r *Msg) {
-	b.serialize <- &rrlRequest{a, q, r}
+	b.serialize <- &item{a, q, r}
 }
 
 func (b *ResponseRatelimit) Block(a net.Addr, q *Msg) int {
@@ -122,4 +120,22 @@ func (b *ResponseRatelimit) Block(a net.Addr, q *Msg) int {
 		return -1
 	}
 	return 0
+}
+
+// NewBandwidthRatelimit returns an Ratelimiter which is an implementation of
+// bandwith rate limit (RRL). TODO(miek): docs
+func NewBandwidthRatelimit() *BandwidthRatelimit {
+	return nil
+}
+
+type bwBucket struct {
+	source    net.Addr  // client address
+	stamp     time.Time // time of last count update
+	bandwidth int       // bandwidth send to client, in bytes per second
+}
+
+type BandwidthRatelimit struct {
+	block     [BUCKETSIZE]*bwBucket
+	serialize chan *item
+	Window    time.Duration
 }
