@@ -392,11 +392,11 @@ func (w *response) WriteMsg(m *Msg) (err error) {
 			tc := new(Msg)
 			tc.Id = m.Id
 			tc.Truncated = true
-			if d, e := tc.Pack(); e != nil {
-				return e
+			if d, err := tc.Pack(); err != nil {
+				return err
 			} else {
-				_, e = w.Write(d)
-				return e
+				_, err = w.Write(d)
+				return err
 			}
 		}
 	}

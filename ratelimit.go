@@ -8,6 +8,10 @@
 
 // RATE LIMITING
 //
+// Limiting the rate of responses by a
+// DNS server is used in order to blunt the impact of DNS reflection and
+// amplification attacks. 
+//
 // Basic use pattern for setting up a server with rate limiting:
 //
 //	b := dns.NewResponseRatelimit()
