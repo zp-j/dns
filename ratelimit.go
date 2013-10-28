@@ -12,7 +12,8 @@
 // DNS server is used in order to blunt the impact of DNS reflection and
 // amplification attacks.
 //
-// Basic use pattern for setting up a server with rate limiting:
+// Basic use pattern for setting up a server with Response Rate Limiting 
+// rate limiting:
 //
 //	b := dns.NewResponseRatelimit()
 //	go func() {
