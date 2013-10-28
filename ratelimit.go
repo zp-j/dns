@@ -12,7 +12,8 @@
 // DNS server is used in order to blunt the impact of DNS reflection and
 // amplification attacks.
 //
-// Basic use pattern for setting up a server with rate limiting:
+// Basic use pattern for setting up a server with Response Rate Limiting 
+// rate limiting:
 //
 //	b := dns.NewResponseRatelimit()
 //	go func() {
@@ -80,7 +81,7 @@ type ResponseRatelimit struct {
 	TruncateRate       int
 	IPv4PrefixLen      int
 	IPv6PrefixLen      int
-	LogOnly            bool
+	LogOnly            *log.Logger // if not nil, do nothing, but log via this Logger.
 }
 
 func (b *ResponseRatelimit) count() {
@@ -138,7 +139,10 @@ func (b *ResponseRatelimit) Block(a net.Addr, q *Msg) int {
 	}
 	log.Printf("%+v\n", b.block[offset])
 	if b.block[offset].rate > 50 {
-		println("HITTING 50, THROTTLING")
+		if b.LogOnly != nil {
+			b.LogOnly.Printf("client `%s': blocking")
+			return 0
+		}
 		return -1
 	}
 	return 0
