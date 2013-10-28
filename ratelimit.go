@@ -10,7 +10,7 @@
 //
 // Limiting the rate of responses by a
 // DNS server is used in order to blunt the impact of DNS reflection and
-// amplification attacks. 
+// amplification attacks.
 //
 // Basic use pattern for setting up a server with rate limiting:
 //
@@ -79,7 +79,7 @@ type ResponseRatelimit struct {
 	TruncateRate       int
 	IPv4PrefixLen      int
 	IPv6PrefixLen      int
-	LogOnly            bool
+	LogOnly            log.Logger // if not nil, do nothing, but log via this Logger.
 }
 
 func (b *ResponseRatelimit) count() {
