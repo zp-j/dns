@@ -10,7 +10,7 @@
 //
 // Limiting the rate of responses by a
 // DNS server is used in order to blunt the impact of DNS reflection and
-// amplification attacks. 
+// amplification attacks.
 //
 // Basic use pattern for setting up a server with rate limiting:
 //
@@ -27,6 +27,7 @@ package dns
 
 import (
 	"hash/adler32"
+	"log"
 	"net"
 	"time"
 )
@@ -123,6 +124,9 @@ func (b *ResponseRatelimit) Count(a net.Addr, q, r *Msg) {
 
 func (b *ResponseRatelimit) Block(a net.Addr, q *Msg) int {
 	offset := 0
+	if b == nil { // not yet initialized
+		return 0
+	}
 	if t, ok := a.(*net.UDPAddr); ok {
 		offset = int(adler32.Checksum(t.IP) % BUCKETSIZE)
 	}
@@ -132,6 +136,7 @@ func (b *ResponseRatelimit) Block(a net.Addr, q *Msg) int {
 	if b.block[offset] == nil {
 		return 0
 	}
+	log.Printf("%+v\n", b.block[offset])
 	if b.block[offset].rate > 50 {
 		println("HITTING 50, THROTTLING")
 		return -1
