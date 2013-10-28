@@ -137,7 +137,9 @@ func (b *ResponseRatelimit) Block(a net.Addr, q *Msg) int {
 	if b.block[offset] == nil {
 		return 0
 	}
-	log.Printf("%+v\n", b.block[offset])
+	if b.LogOnly != nil {
+		b.LogOnly.Printf("%+v\n", b.block[offset])
+	}
 	if b.block[offset].rate > 50 {
 		if b.LogOnly != nil {
 			b.LogOnly.Printf("client `%s': blocking")
