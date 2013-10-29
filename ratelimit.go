@@ -45,6 +45,8 @@ type Ratelimiter interface {
 	Block(remote net.Addr, reply *Msg) int
 }
 
+const BUCKETSIZE = 10000
+
 // NewResponseRatelimit returns an Ratelimiter which is an implementation of
 // response rate limit (RRL) with good defaults.
 // See http://ss.vix.su/~vixie/isc-tn-2012-1.txt for an explanation of the
@@ -56,7 +58,6 @@ func NewResponseRatelimit() *ResponseRatelimit {
 	return b
 }
 
-const BUCKETSIZE = 10000
 
 type rrlBucket struct {
 	source net.Addr  // client address
