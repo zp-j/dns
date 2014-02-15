@@ -213,6 +213,7 @@ type Server struct {
 	Pool bool
 	// channels for the pool
 	get, give chan []byte
+	waiter    sync.WaitGroup
 }
 
 // ListenAndServe starts a nameserver on the configured address in *Server.
@@ -237,7 +238,8 @@ func (srv *Server) ListenAndServe() error {
 		if e != nil {
 			return e
 		}
-		return srv.serveTCP(l)
+		go srv.serveTCP(l)
+		return nil
 	case "udp", "udp4", "udp6":
 		a, e := net.ResolveUDPAddr(srv.Net, addr)
 		if e != nil {
@@ -247,7 +249,8 @@ func (srv *Server) ListenAndServe() error {
 		if e != nil {
 			return e
 		}
-		return srv.serveUDP(l)
+		go srv.serveUDP(l)
+		return nil
 	}
 	return &Error{err: "bad network"}
 }
