@@ -241,7 +241,6 @@ func (srv *Server) ListenAndServe() error {
 		srv.waiter.Add(1)
 		go srv.serveTCP(l)
 		srv.waiter.Wait()
-		println("Stopping server")
 		return nil
 	case "udp", "udp4", "udp6":
 		a, e := net.ResolveUDPAddr(srv.Net, addr)
@@ -255,7 +254,6 @@ func (srv *Server) ListenAndServe() error {
 		srv.waiter.Add(1)
 		go srv.serveUDP(l)
 		srv.waiter.Wait()
-		println("Stopping server")
 		return nil
 	}
 	return &Error{err: "bad network"}
