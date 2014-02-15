@@ -198,6 +198,7 @@ func TestServingLargeResponses(t *testing.T) {
 		server.ListenAndServe()
 	}()
 	time.Sleep(50 * time.Millisecond)
+	defer server.Stop()
 
 	// Create request
 	m := new(Msg)
