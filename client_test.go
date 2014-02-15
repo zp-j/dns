@@ -14,7 +14,7 @@ func newTestServer(t *testing.T) {
 	HandleFunc("miek.nl.", HelloServer)
 	HandleFunc("example.com.", AnotherHelloServer)
 	go func() {
-		err := ListenAndServe(":8063", "udp", nil)
+		err := ListenAndServe(":6053", "udp", nil)
 		if err != nil {
 			t.Log("ListenAndServe: ", err.Error())
 			t.Fatal()
@@ -24,11 +24,16 @@ func newTestServer(t *testing.T) {
 }
 
 func TestClientSync(t *testing.T) {
+	newTestServer(t)
 	m := new(Msg)
 	m.SetQuestion("miek.nl.", TypeSOA)
 
 	c := new(Client)
-	r, _, _ := c.Exchange(m, "127.0.0.1:6053")
+	r, _, err := c.Exchange(m, "127.0.0.1:6053")
+	if err != nil {
+		t.Log("Failure: " + err.Error())
+		t.Fail()
+	}
 
 	if r != nil && r.Rcode != RcodeSuccess {
 		t.Log("Failed to get an valid answer")
@@ -44,7 +49,11 @@ func TestClientEDNS0(t *testing.T) {
 	m.SetEdns0(2048, true)
 
 	c := new(Client)
-	r, _, _ := c.Exchange(m, "127.0.0.1:6053")
+	r, _, err := c.Exchange(m, "127.0.0.1:6053")
+	if err != nil {
+		t.Log("Failure: " + err.Error())
+		t.Fail()
+	}
 
 	if r != nil && r.Rcode != RcodeSuccess {
 		t.Log("Failed to get an valid answer")
