@@ -85,6 +85,8 @@ Example programs can be found in the `github.com/miekg/exdns` repository.
 * 2845 - TSIG record
 * 2915 - NAPTR record
 * 2929 - DNS IANA Considerations
+* 2930 - TKEY
+* 2931 - SIG(0)
 * 3110 - RSASHA1 DNS keys
 * 3225 - DO bit (DNSSEC OK)
 * 340{1,2,3} - NAPTR record
