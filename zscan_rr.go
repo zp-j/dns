@@ -140,6 +140,12 @@ func setRR(h RR_Header, c chan lex, o, f string) (RR, *ParseError, string) {
 		return setNIMLOC(h, c, f)
 	case TypeNSAP:
 		return setNSAP(h, c, f)
+	case TypeKEY:
+		r, e, s :=  setDNSKEY(h, c, f)
+		if e != nil {
+			return &KEY{*r.(*DNSKEY)} , e, s
+		}
+		return r, e, s
 	case TypeDNSKEY:
 		return setDNSKEY(h, c, f)
 	case TypeRKEY:
