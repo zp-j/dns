@@ -573,6 +573,7 @@ func zlexer(s *scan, c chan lex) {
 						}
 					}
 					if t, ok := StringToClass[l.token]; ok {
+						println("HREURE")
 						l.value = _CLASS
 						l.torc = t
 					} else {

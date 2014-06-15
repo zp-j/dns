@@ -129,6 +129,6 @@ Example programs can be found in the `github.com/miekg/exdns` repository.
 * Ratelimiting? server side (RRL);
 * Make a srv.Stop() that stops the server;
 * privatekey.Precompute() when signing?
-* Last remaining RRs: APL, ATMA, A6, KEY, SIG and NXT;
+* Last remaining RRs: APL, ATMA, A6, and NXT;
 * CAA parsing is broken;
 * Replies with TC bit are not parsed to the end.

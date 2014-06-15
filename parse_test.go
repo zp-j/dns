@@ -503,24 +503,6 @@ func TestParseFailure(t *testing.T) {
 	}
 }
 
-func TestZoneParsing(t *testing.T) {
-	f, err := os.Open("test.db")
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	start := time.Now().UnixNano()
-	to := ParseZone(f, "", "test.db")
-	var i int
-	for x := range to {
-		x = x
-		//t.Logf("%s\n", x.RR)
-		i++
-	}
-	delta := time.Now().UnixNano() - start
-	t.Logf("%d RRs parsed in %.2f s (%.2f RR/s)", i, float32(delta)/1e9, float32(i)/(float32(delta)/1e9))
-}
-
 func ExampleZone() {
 	zone := `$ORIGIN .
 $TTL 3600       ; 1 hour
@@ -556,6 +538,7 @@ $ORIGIN name.
 $ORIGIN 0-g.name
 moutamassey             NS      ns01.yahoodomains.jp.
                         NS      ns02.yahoodomains.jp.
+            ANY         NS      ns02.yahoodomains.jp.
 `
 	to := ParseZone(strings.NewReader(zone), "", "testzone")
 	for x := range to {
@@ -1131,3 +1114,23 @@ func TestMalformedPackets(t *testing.T) {
 		//		println(msg.String())
 	}
 }
+
+// Internal benchmark test
+func testZoneParsing(t *testing.T) {
+	f, err := os.Open("test.db")
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	start := time.Now().UnixNano()
+	to := ParseZone(f, "", "test.db")
+	var i int
+	for x := range to {
+		x = x
+		//t.Logf("%s\n", x.RR)
+		i++
+	}
+	delta := time.Now().UnixNano() - start
+	t.Logf("%d RRs parsed in %.2f s (%.2f RR/s)", i, float32(delta)/1e9, float32(i)/(float32(delta)/1e9))
+}
+

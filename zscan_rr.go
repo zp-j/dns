@@ -144,6 +144,12 @@ func setRR(h RR_Header, c chan lex, o, f string) (RR, *ParseError, string) {
 		return setDNSKEY(h, c, f)
 	case TypeRKEY:
 		return setRKEY(h, c, f)
+	case TypeSIG:
+		r, e, s :=  setRRSIG(h, c, o, f)
+		if e != nil {
+			return &SIG{*r.(*RRSIG)} , e, s
+		}
+		return r, e, s
 	case TypeRRSIG:
 		return setRRSIG(h, c, o, f)
 	case TypeNSEC:

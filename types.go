@@ -779,6 +779,11 @@ func (rr *LOC) String() string {
 	return s
 }
 
+// SIG is identical to RRSIG and nowadays only used for SIG(0), RFC2931.
+type SIG struct {
+	RRSIG
+}
+
 type RRSIG struct {
 	Hdr         RR_Header
 	TypeCovered uint16
@@ -1009,6 +1014,9 @@ func (rr *IPSECKEY) len() int {
 	return rr.Hdr.len() + 3 + len(rr.Gateway) + 1 +
 		base64.StdEncoding.DecodedLen(len(rr.PublicKey))
 }
+
+// KEY is identical to DNSKEY and nowadays only used for SIG(0), RFC2931
+type KEY DNSKEY
 
 type DNSKEY struct {
 	Hdr       RR_Header
@@ -1614,6 +1622,7 @@ var rr_mk = map[uint16]func() RR{
 	TypeRKEY:       func() RR { return new(RKEY) },
 	TypeRP:         func() RR { return new(RP) },
 	TypePX:         func() RR { return new(PX) },
+	TypeSIG:	func() RR { return new(SIG) },
 	TypeRRSIG:      func() RR { return new(RRSIG) },
 	TypeRT:         func() RR { return new(RT) },
 	TypeSOA:        func() RR { return new(SOA) },
