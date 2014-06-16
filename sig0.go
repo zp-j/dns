@@ -7,3 +7,12 @@
 // blah
 package dns
 
+// SIG0Sign will sign the ...
+func (dns *Msg) SIG0Sign() {
+
+}
+
+// SIG0Verify will bla bla
+func SIG0Verify([]byte) {
+
+}
