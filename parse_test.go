@@ -137,7 +137,7 @@ func TestDomainNameAndTXTEscapes(t *testing.T) {
 	}
 }
 
-func GenerateDomain(r *rand.Rand, size int) []byte {
+func generateDomain(r *rand.Rand, size int) []byte {
 	dnLen := size % 70 // artificially limit size so there's less to intrepret if a failure occurs
 	var dn []byte
 	done := false
@@ -168,7 +168,7 @@ func GenerateDomain(r *rand.Rand, size int) []byte {
 func TestDomainQuick(t *testing.T) {
 	r := rand.New(rand.NewSource(0))
 	f := func(l int) bool {
-		db := GenerateDomain(r, l)
+		db := generateDomain(r, l)
 		ds, _, err := UnpackDomainName(db, 0)
 		if err != nil {
 			panic(err)
@@ -195,7 +195,7 @@ func TestDomainQuick(t *testing.T) {
 	}
 }
 
-func GenerateTXT(r *rand.Rand, size int) []byte {
+func generateTXT(r *rand.Rand, size int) []byte {
 	rdLen := size % 300 // artificially limit size so there's less to intrepret if a failure occurs
 	var rd []byte
 	for i := 0; i < rdLen; {
@@ -227,8 +227,8 @@ func TestTXTRRQuick(t *testing.T) {
 		0, 0, 0, 1, // TTL
 	}
 	f := func(l int) bool {
-		owner := GenerateDomain(r, l)
-		rdata := GenerateTXT(r, l)
+		owner := generateDomain(r, l)
+		rdata := generateTXT(r, l)
 		rrbytes := make([]byte, 0, len(owner)+2+2+4+2+len(rdata))
 		rrbytes = append(rrbytes, owner...)
 		rrbytes = append(rrbytes, typeAndClass...)
