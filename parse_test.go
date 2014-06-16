@@ -538,7 +538,6 @@ $ORIGIN name.
 $ORIGIN 0-g.name
 moutamassey             NS      ns01.yahoodomains.jp.
                         NS      ns02.yahoodomains.jp.
-            ANY         NS      ns02.yahoodomains.jp.
 `
 	to := ParseZone(strings.NewReader(zone), "", "testzone")
 	for x := range to {

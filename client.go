@@ -240,7 +240,7 @@ func (co *Conn) WriteMsg(m *Msg) (err error) {
 		if _, ok := co.TsigSecret[t.Hdr.Name]; !ok {
 			return ErrSecret
 		}
-		out, mac, err = TsigGenerate(m, co.TsigSecret[t.Hdr.Name], co.tsigRequestMAC, false)
+		out, mac, err = m.TsigSign(m, co.TsigSecret[t.Hdr.Name], co.tsigRequestMAC, false)
 		// Set for the next read, allthough only used in zone transfers
 		co.tsigRequestMAC = mac
 	} else {

@@ -150,7 +150,12 @@ type timerWireFmt struct {
 	Fudge      uint16
 }
 
-// TsigGenerate fills out the TSIG record attached to the message.
+func TsigGenerate(m *Msg, secret, requestMAC string, timersOnly bool) ([]byte, string, error) {
+	println("dns: this function is deprecated")
+	return m.TsigSign(secret, requestMAC, timersOnly)
+}
+
+// TsigSign fills out the TSIG record attached to the message.
 // The message should contain
 // a "stub" TSIG RR with the algorithm, key name (owner name of the RR),
 // time fudge (defaults to 300 seconds) and the current time
@@ -158,8 +163,8 @@ type timerWireFmt struct {
 // When TsigGenerate is called for the first time requestMAC is set to the empty string and
 // timersOnly is false.
 // If something goes wrong an error is returned, otherwise it is nil.
-func TsigGenerate(m *Msg, secret, requestMAC string, timersOnly bool) ([]byte, string, error) {
-	if m.IsTsig() == nil {
+func (dns *Msg) TsigSign(secret, requestMAC string, timersOnly bool) ([]byte, string, error) {
+	if dns.IsTsig() == nil {
 		panic("dns: TSIG not last RR in additional")
 	}
 	// If we barf here, the caller is to blame
@@ -168,9 +173,9 @@ func TsigGenerate(m *Msg, secret, requestMAC string, timersOnly bool) ([]byte, s
 		return nil, "", err
 	}
 
-	rr := m.Extra[len(m.Extra)-1].(*TSIG)
-	m.Extra = m.Extra[0 : len(m.Extra)-1] // kill the TSIG from the msg
-	mbuf, err := m.Pack()
+	rr := dns.Extra[len(dns.Extra)-1].(*TSIG)
+	dns.Extra = dns.Extra[0 : len(dns.Extra)-1] // kill the TSIG from the msg
+	mbuf, err := dns.Pack()
 	if err != nil {
 		return nil, "", err
 	}
@@ -196,7 +201,7 @@ func TsigGenerate(m *Msg, secret, requestMAC string, timersOnly bool) ([]byte, s
 	t.Fudge = rr.Fudge
 	t.TimeSigned = rr.TimeSigned
 	t.Algorithm = rr.Algorithm
-	t.OrigId = m.Id
+	t.OrigId = dns.Id
 
 	tbuf := make([]byte, t.len())
 	if off, err := PackRR(t, tbuf, 0, nil, false); err == nil {
@@ -205,7 +210,7 @@ func TsigGenerate(m *Msg, secret, requestMAC string, timersOnly bool) ([]byte, s
 		return nil, "", err
 	}
 	mbuf = append(mbuf, tbuf...)
-	rawSetExtraLen(mbuf, uint16(len(m.Extra)+1))
+	rawSetExtraLen(mbuf, uint16(len(dns.Extra)+1))
 	return mbuf, t.MAC, nil
 }
 
