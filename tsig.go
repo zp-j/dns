@@ -155,6 +155,13 @@ func TsigGenerate(m *Msg, secret, requestMAC string, timersOnly bool) ([]byte, s
 	return m.TsigSign(secret, requestMAC, timersOnly)
 }
 
+
+// TODO(miek): this should be changed to mimic stuff in sig0.go
+//   make it a method on the TSIG record
+//   this would also make the names better TsigSign -> Sign
+//   this can actually be done in parallel
+//   deprecate the old and in with the new
+
 // TsigSign fills out the TSIG record attached to the message.
 // The message should contain
 // a "stub" TSIG RR with the algorithm, key name (owner name of the RR),

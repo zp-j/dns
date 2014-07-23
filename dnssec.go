@@ -241,7 +241,7 @@ func (rr *RRSIG) Sign(k PrivateKey, rrset []RR) error {
 	sigwire.SignerName = strings.ToLower(rr.SignerName)
 
 	// Create the desired binary blob
-	signdata := make([]byte, DefaultMsgSize)
+	signdata := make([]byte, DefaultMsgSize) // TODO(miek): this should be fixed too
 	n, err := PackStruct(sigwire, signdata, 0)
 	if err != nil {
 		return err
