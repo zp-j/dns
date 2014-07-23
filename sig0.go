@@ -33,10 +33,10 @@ func (rr *SIG) Sign(k PrivateKey, m *Msg) ([]byte, error) {
 	rr.TypeCovered = 0
 	rr.Labels = 0
 
-	signdata, err := m.Pack()
-	if err != nil {
-		return nil, err
-	}
+//	signdata, err := m.Pack()
+//	if err != nil {
+//		return nil, err
+//	}
 	// copy the sigwire stuff from dnssec.go
 	return nil, nil
 }
