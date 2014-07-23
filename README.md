@@ -45,6 +45,8 @@ A not-so-up-to-date-list-that-may-be-actually-current:
 * EDNS0, NSID;
 * AXFR/IXFR;
 * TSIG;
+* SIG(0);
+* Dynamic updates;
 * DNS name compression.
 
 Have fun!
