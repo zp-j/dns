@@ -13,12 +13,12 @@
 //
 package dns
 
-// SIG0Sign will sign the ...
-func (dns *Msg) SIG0Sign() ([]byte, error) {
+// Sign signs a dns.Msg ...
+func (rr *SIG) Sign(k PrivateKey, m *Msg) ([]byte, error) {
 	return nil, nil
 }
 
 // SIG0Verify will bla bla
-func SIG0Verify([]byte) bool {
-	return false
+func (rr *SIG) Verify(k *KEY, buf []byte) error {
+	return nil
 }
