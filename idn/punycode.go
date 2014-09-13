@@ -1,3 +1,4 @@
+// Package idn implements encoding from and to punycode as speficied by RFC 3492.
 package idn
 
 import (
@@ -5,7 +6,6 @@ import (
 	"unicode"
 )
 
-// See http://tools.ietf.org/html/rfc3492
 // Implementation idea from RFC itself and from from IDNA::Punycode created by
 // Tatsuhiko Miyagawa <miyagawa@bulknews.net> and released under Perl Artistic
 // License in 2002
@@ -23,7 +23,13 @@ const (
 	_PREFIX    = "xn--"
 )
 
-func ToPunycode(s string) string {
+type CorruptInPutError int64
+
+func (e CorruptInPutError) Error() string { return "bla" }
+
+// EncodeToString returns the punycode encoding of src.
+func EncodeToString(s string) string {
+	// Should this than be `s []byte`?
 	tokens := bytes.Split([]byte(s), []byte{'.'})
 	for i := range tokens {
 		tokens[i] = encodeBytes(tokens[i])
@@ -31,12 +37,39 @@ func ToPunycode(s string) string {
 	return string(bytes.Join(tokens, []byte{'.'}))
 }
 
-func FromPunycode(s string) string {
+// DecodeString returns the string (bytes?) represented by the punycode string s.
+func DecodeString(s string) (string, error) {
 	tokens := bytes.Split([]byte(s), []byte{'.'})
 	for i := range tokens {
 		tokens[i] = decodeBytes(tokens[i])
 	}
-	return string(bytes.Join(tokens, []byte{'.'}))
+	return string(bytes.Join(tokens, []byte{'.'})), nil
+}
+
+// EncodedLen returns the length in bytes of the punycode encoding of an input byffer of length n.
+func EncodedLen(n int) int {
+	return 0
+}
+
+// DecodedLen returns the maximum length in bytes of the decoded data
+// corresponding to n bytes of punycode-encoded data.
+func DecodedLen(n int) int {
+	return 0
+}
+
+// NewDecoder constructs a new punycode stream decoder.
+func NewDecoder(r io.Reader) io.Reader {
+	// call decodesBytes() directly
+	return nil
+}
+
+// NewEncoder returns a new punycode stream encoder. Data written to the
+// returned writer will be encoded and written to w. 
+// Bla bla bla block, the caller
+// must Close the returned encoder to flush any partially written blocks.
+func NewEncoder(w io.Writer) io.WriteCloser {
+	// call encodeBytes() directly
+	return nil
 }
 
 // digitval converts single byte into meaningful value that's used to calculate decoded unicode character.
@@ -49,7 +82,7 @@ func digitval(code rune) rune {
 	case code >= '0' && code <= '9':
 		return code - '0' + 26
 	}
-	panic("dns: not reached")
+	panic("idn: not reached")
 }
 
 // lettercode finds BASE36 byte (a-z0-9) based on calculated number.
@@ -60,7 +93,7 @@ func lettercode(digit rune) rune {
 	case digit >= 26 && digit <= 36:
 		return digit - 26 + '0'
 	}
-	panic("dns: not reached")
+	panic("idn: not reached")
 }
 
 // adapt calculates next bias to be used for next iteration delta
@@ -82,7 +115,7 @@ func adapt(delta rune, numpoints rune, firsttime bool) rune {
 // next finds minimal rune (one with lowest codepoint value) that should be equal or above boundary.
 func next(b []rune, boundary rune) rune {
 	if len(b) == 0 {
-		panic("invalid set of runes to determine next one")
+		panic("idn: invalid set of runes to determine next one") // TODO: return error?
 	}
 	m := b[0]
 	for _, x := range b[1:] {
@@ -93,8 +126,8 @@ func next(b []rune, boundary rune) rune {
 	return m
 }
 
-// PrepRune should do actions recommended by stringprep (RFC3491) for each unicode char. TODO(asergeyev): work on actual implementation, currently just lowercases Unicode chars.
-func PrepRune(r rune) rune {
+// prepRune should do actions recommended by stringprep (RFC3491) for each unicode char. TODO(asergeyev): work on actual implementation, currently just lowercases Unicode chars.
+func prepRune(r rune) rune {
 	if unicode.IsUpper(r) {
 		r = unicode.ToLower(r)
 	}
@@ -118,7 +151,7 @@ func encodeBytes(input []byte) []byte {
 
 	b := bytes.Runes(input)
 	for i := range b {
-		b[i] = PrepRune(b[i])
+		b[i] = prepRune(b[i])
 	}
 
 	basic := make([]byte, 0, len(b))
