@@ -23,9 +23,9 @@ const (
 	_PREFIX    = "xn--"
 )
 
-type CorruptInPutError int64
+type CorruptInputError int64
 
-func (e CorruptInPutError) Error() string { return "bla" }
+func (e CorruptInputError) Error() string { return "bla" }
 
 // EncodeToString returns the punycode encoding of src.
 func EncodeToString(s string) string {
