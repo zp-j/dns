@@ -36,11 +36,11 @@ func TestEncodePunycode(t *testing.T) {
 			t.Errorf("%s decoded as %s but should be %s", tst[1], dec, strings.ToLower(tst[0]))
 		}
 
-		full := ToPunycode(tst[0] + ".com")
+		full := EncodeToString(tst[0] + ".com")
 		if full != tst[1]+".com" {
 			t.Errorf("invalid result from string conversion to punycode, %s and should be %s.com", full, tst[1])
 		}
-		decoded := FromPunycode(tst[1] + "." + tst[1])
+		decoded, _ := DecodeString(tst[1] + "." + tst[1])
 		if decoded != strings.ToLower(tst[0]+"."+tst[0]) {
 			t.Errorf("invalid result from string conversion to punycode, %s and should be %s.%s", decoded, tst[0], tst[0])
 		}

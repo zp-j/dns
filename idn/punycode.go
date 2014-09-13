@@ -3,6 +3,7 @@ package idn
 
 import (
 	"bytes"
+	"io"
 	"unicode"
 )
 
@@ -64,7 +65,7 @@ func NewDecoder(r io.Reader) io.Reader {
 }
 
 // NewEncoder returns a new punycode stream encoder. Data written to the
-// returned writer will be encoded and written to w. 
+// returned writer will be encoded and written to w.
 // Bla bla bla block, the caller
 // must Close the returned encoder to flush any partially written blocks.
 func NewEncoder(w io.Writer) io.WriteCloser {
