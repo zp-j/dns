@@ -106,7 +106,7 @@ func (rr *OPT) Len() int {
 	return l
 }
 
-func (rr *OPT) copy() RR {
+func (rr *OPT) Copy() RR {
 	return &OPT{*rr.Hdr.copyHeader(), rr.Option}
 }
 

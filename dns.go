@@ -123,7 +123,7 @@ type RR interface {
 	// String returns the text representation of the resource record.
 	String() string
 	// Copy returns a copy of the RR.
-	copy() RR
+	Copy() RR
 	// Len returns the length (in octets) of the uncompressed RR in wire format.
 	Len() int
 }
@@ -141,8 +141,8 @@ type RR_Header struct {
 
 func (h *RR_Header) Header() *RR_Header { return h }
 
-// Just to imlement the RR interface
-func (h *RR_Header) copy() RR { return nil }
+// Just to imlement the RR interface. It returns nil.
+func (h *RR_Header) Copy() RR { return nil }
 
 func (h *RR_Header) copyHeader() *RR_Header {
 	r := new(RR_Header)

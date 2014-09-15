@@ -1800,7 +1800,7 @@ func id() uint16 {
 
 // Copy returns a new RR which is a deep-copy of r.
 func Copy(r RR) RR {
-	r1 := r.copy()
+	r1 := r.Copy()
 	return r1
 }
 
@@ -1818,21 +1818,21 @@ func (dns *Msg) Copy() *Msg {
 	if len(dns.Answer) > 0 {
 		r1.Answer = make([]RR, len(dns.Answer))
 		for i := 0; i < len(dns.Answer); i++ {
-			r1.Answer[i] = dns.Answer[i].copy()
+			r1.Answer[i] = dns.Answer[i].Copy()
 		}
 	}
 
 	if len(dns.Ns) > 0 {
 		r1.Ns = make([]RR, len(dns.Ns))
 		for i := 0; i < len(dns.Ns); i++ {
-			r1.Ns[i] = dns.Ns[i].copy()
+			r1.Ns[i] = dns.Ns[i].Copy()
 		}
 	}
 
 	if len(dns.Extra) > 0 {
 		r1.Extra = make([]RR, len(dns.Extra))
 		for i := 0; i < len(dns.Extra); i++ {
-			r1.Extra[i] = dns.Extra[i].copy()
+			r1.Extra[i] = dns.Extra[i].Copy()
 		}
 	}
 

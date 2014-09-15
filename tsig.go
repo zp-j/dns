@@ -112,7 +112,7 @@ func (rr *TSIG) Len() int {
 		4 + len(rr.MAC)/2 + 1 + 6 + len(rr.OtherData)/2 + 1
 }
 
-func (rr *TSIG) copy() RR {
+func (rr *TSIG) Copy() RR {
 	return &TSIG{*rr.Hdr.copyHeader(), rr.Algorithm, rr.TimeSigned, rr.Fudge, rr.MACSize, rr.MAC, rr.OrigId, rr.Error, rr.OtherLen, rr.OtherData}
 }
 

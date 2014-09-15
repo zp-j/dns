@@ -645,7 +645,7 @@ func (p wireSlice) Less(i, j int) bool {
 func rawSignatureData(rrset []RR, s *RRSIG) (buf []byte, err error) {
 	wires := make(wireSlice, len(rrset))
 	for i, r := range rrset {
-		r1 := r.copy()
+		r1 := r.Copy()
 		r1.Header().Ttl = s.OrigTtl
 		labels := SplitDomainName(r1.Header().Name)
 		// 6.2. Canonical RR Form. (4) - wildcards
