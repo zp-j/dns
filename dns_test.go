@@ -184,10 +184,10 @@ func TestPackNAPTR(t *testing.T) {
 		`apple.com. IN NAPTR   50 50 "se" "SIPS+D2T" "" _sips._tcp.apple.com.`,
 	} {
 		rr, _ := NewRR(n)
-		msg := make([]byte, rr.len())
+		msg := make([]byte, rr.Len())
 		if off, err := PackRR(rr, msg, 0, nil, false); err != nil {
 			t.Logf("packing failed: %s", err.Error())
-			t.Logf("length %d, need more than %d\n", rr.len(), off)
+			t.Logf("length %d, need more than %d\n", rr.Len(), off)
 			t.Fail()
 		} else {
 			t.Logf("buf size needed: %d\n", off)
