@@ -118,14 +118,14 @@ func (e *Error) Error() string {
 // An RR represents a resource record.
 type RR interface {
 	// Header returns the header of an resource record. The header contains
-	// everything up to the rdata.
+	// everything up to the Rdata.
 	Header() *RR_Header
 	// String returns the text representation of the resource record.
 	String() string
-	// copy returns a copy of the RR
+	// Copy returns a copy of the RR.
 	copy() RR
-	// len returns the length (in octects) of the uncompressed RR in wire format.
-	len() int
+	// Len returns the length (in octets) of the uncompressed RR in wire format.
+	Len() int
 }
 
 // DNS resource records.
@@ -169,7 +169,7 @@ func (h *RR_Header) String() string {
 	return s
 }
 
-func (h *RR_Header) len() int {
+func (h *RR_Header) Len() int {
 	l := len(h.Name) + 1
 	l += 10 // rrtype(2) + class(2) + ttl(4) + rdlength(2)
 	return l
@@ -178,7 +178,7 @@ func (h *RR_Header) len() int {
 // ToRFC3597 converts a known RR to the unknown RR representation
 // from RFC 3597.
 func (rr *RFC3597) ToRFC3597(r RR) error {
-	buf := make([]byte, r.len()*2)
+	buf := make([]byte, r.Len()*2)
 	off, err := PackStruct(r, buf, 0)
 	if err != nil {
 		return err

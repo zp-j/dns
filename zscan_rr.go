@@ -12,9 +12,9 @@ type ParserFunc struct {
 	// or an error. The last string contains any comments in the line as
 	// they returned by the lexer as well.
 	Func func(h RR_Header, c chan lex, origin string, file string) (RR, *ParseError, string)
-	// Signals if the RR is ending is of variable length, like TXT or records
-	// that have Hexadecimal or Base64 as their last element in the Rdata. Records
-	// that have a fixed ending or for instance A, AAAA, SOA and etc.
+	// Signals if the RR ending is of variable length, like TXT or records
+	// that have hexadecimal or base64 as their last element in the Rdata. Records
+	// that have a fixed ending are, for instance: A, AAAA, SOA and etc.
 	Variable bool
 }
 
