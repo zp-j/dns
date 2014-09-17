@@ -24,18 +24,21 @@ type parserFunc struct {
 // or immediately a _NEWLINE. If this is not the case we flag
 // an *ParseError: garbage after rdata.
 func setRR(h RR_Header, c chan lex, o, f string) (RR, *ParseError, string) {
-	var r RR
-	mk, known := typeToRR[h.Rtype]
+	var rr RR
+	mk, known := typeToRR[h.Rrtype]
 	if !known {
 		// PrivateRR and then Uknown RR handling
 		// ...
 		// RFC3957 RR (Unknown RR handling)
 		rr = new(RFC3597)
-		rr.Hdr = h
-		return setRFC3597(rr, c, o, f)
+		h1 := rr.Header()
+		h1 = &h
+		e, s := setRFC3597(rr, c, o, f)
+		return rr, e, s
 	}
 	rr = mk()
-	rr.Hdr = h
+	h1 := rr.Header()
+	h1 = &h
 	e := new(ParseError)
 
 	parserfunc, ok := typeToparserFunc[h.Rrtype]
@@ -55,6 +58,7 @@ func setRR(h RR_Header, c chan lex, o, f string) (RR, *ParseError, string) {
 		return rr, e, com
 	}
 	// error out with no suitable parser function found
+	return nil, nil, ""
 }
 
 // A remainder of the rdata with embedded spaces, return the parsed string (sans the spaces)
@@ -120,102 +124,102 @@ func endingToTxtSlice(c chan lex, errstr, f string) ([]string, *ParseError, stri
 	return s, nil, l.comment
 }
 
-func setA(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setA(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 { // Dynamic updates.
-		return rr, nil, ""
+		return nil, ""
 	}
-	rr.A = net.ParseIP(l.token)
-	if rr.A == nil {
-		return nil, &ParseError{f, "bad A A", l}, ""
+	rr.(*A).A = net.ParseIP(l.token)
+	if rr.(*A).A == nil {
+		return &ParseError{f, "bad A A", l}, ""
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setAAAA(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setAAAA(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	rr.AAAA = net.ParseIP(l.token)
 	if rr.AAAA == nil {
-		return nil, &ParseError{f, "bad AAAA AAAA", l}, ""
+		return &ParseError{f, "bad AAAA AAAA", l}, ""
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setNS(rr, c chan lex, o, f string) (RR, *ParseError, string) {
+func setNS(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Ns = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Ns = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad NS Ns", l}, ""
+		return  &ParseError{f, "bad NS Ns", l}, ""
 	}
 	if rr.Ns[l.length-1] != '.' {
 		rr.Ns = appendOrigin(rr.Ns, o)
 	}
-	return rr, nil, ""
+	return  nil, ""
 }
 
-func setPTR(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setPTR(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Ptr = l.token
 	if l.length == 0 { // dynamic update rr.
-		return rr, nil, ""
+		return  nil, ""
 	}
 	if l.token == "@" {
 		rr.Ptr = o
-		return rr, nil, ""
+		return  nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad PTR Ptr", l}, ""
+		return  &ParseError{f, "bad PTR Ptr", l}, ""
 	}
 	if rr.Ptr[l.length-1] != '.' {
 		rr.Ptr = appendOrigin(rr.Ptr, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setNSAPPTR(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setNSAPPTR(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Ptr = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Ptr = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad NSAP-PTR Ptr", l}, ""
+		return &ParseError{f, "bad NSAP-PTR Ptr", l}, ""
 	}
 	if rr.Ptr[l.length-1] != '.' {
 		rr.Ptr = appendOrigin(rr.Ptr, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setRP(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setRP(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Mbox = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Mbox = o
 	} else {
 		_, ok := IsDomainName(l.token)
 		if !ok {
-			return nil, &ParseError{f, "bad RP Mbox", l}, ""
+			return &ParseError{f, "bad RP Mbox", l}, ""
 		}
 		if rr.Mbox[l.length-1] != '.' {
 			rr.Mbox = appendOrigin(rr.Mbox, o)
@@ -226,100 +230,100 @@ func setRP(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	rr.Txt = l.token
 	if l.token == "@" {
 		rr.Txt = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad RP Txt", l}, ""
+		return &ParseError{f, "bad RP Txt", l}, ""
 	}
 	if rr.Txt[l.length-1] != '.' {
 		rr.Txt = appendOrigin(rr.Txt, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setMR(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setMR(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Mr = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Mr = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad MR Mr", l}, ""
+		return &ParseError{f, "bad MR Mr", l}, ""
 	}
 	if rr.Mr[l.length-1] != '.' {
 		rr.Mr = appendOrigin(rr.Mr, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setMB(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setMB(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Mb = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Mb = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad MB Mb", l}, ""
+		return &ParseError{f, "bad MB Mb", l}, ""
 	}
 	if rr.Mb[l.length-1] != '.' {
 		rr.Mb = appendOrigin(rr.Mb, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setMG(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setMG(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Mg = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Mg = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad MG Mg", l}, ""
+		return &ParseError{f, "bad MG Mg", l}, ""
 	}
 	if rr.Mg[l.length-1] != '.' {
 		rr.Mg = appendOrigin(rr.Mg, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setHINFO(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setHINFO(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Cpu = l.token
 	<-c     // _BLANK
 	l = <-c // _STRING
 	rr.Os = l.token
 
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setMINFO(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setMINFO(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Rmail = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Rmail = o
 	} else {
 		_, ok := IsDomainName(l.token)
 		if !ok {
-			return nil, &ParseError{f, "bad MINFO Rmail", l}, ""
+			return &ParseError{f, "bad MINFO Rmail", l}, ""
 		}
 		if rr.Rmail[l.length-1] != '.' {
 			rr.Rmail = appendOrigin(rr.Rmail, o)
@@ -330,65 +334,65 @@ func setMINFO(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	rr.Email = l.token
 	if l.token == "@" {
 		rr.Email = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad MINFO Email", l}, ""
+		return &ParseError{f, "bad MINFO Email", l}, ""
 	}
 	if rr.Email[l.length-1] != '.' {
 		rr.Email = appendOrigin(rr.Email, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setMF(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setMF(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Mf = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Mf = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad MF Mf", l}, ""
+		return &ParseError{f, "bad MF Mf", l}, ""
 	}
 	if rr.Mf[l.length-1] != '.' {
 		rr.Mf = appendOrigin(rr.Mf, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setMD(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setMD(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Md = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Md = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad MD Md", l}, ""
+		return &ParseError{f, "bad MD Md", l}, ""
 	}
 	if rr.Md[l.length-1] != '.' {
 		rr.Md = appendOrigin(rr.Md, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setMX(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setMX(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad MX Pref", l}, ""
+		return &ParseError{f, "bad MX Pref", l}, ""
 	} else {
 		rr.Preference = uint16(i)
 	}
@@ -397,25 +401,25 @@ func setMX(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	rr.Mx = l.token
 	if l.token == "@" {
 		rr.Mx = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok || l.length == 0 {
-		return nil, &ParseError{f, "bad MX Mx", l}, ""
+		return &ParseError{f, "bad MX Mx", l}, ""
 	}
 	if rr.Mx[l.length-1] != '.' {
 		rr.Mx = appendOrigin(rr.Mx, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setRT(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setRT(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad RT Preference", l}, ""
+		return &ParseError{f, "bad RT Preference", l}, ""
 	} else {
 		rr.Preference = uint16(i)
 	}
@@ -424,25 +428,25 @@ func setRT(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	rr.Host = l.token
 	if l.token == "@" {
 		rr.Host = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok || l.length == 0 {
-		return nil, &ParseError{f, "bad RT Host", l}, ""
+		return &ParseError{f, "bad RT Host", l}, ""
 	}
 	if rr.Host[l.length-1] != '.' {
 		rr.Host = appendOrigin(rr.Host, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setAFSDB(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setAFSDB(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad AFSDB Subtype", l}, ""
+		return &ParseError{f, "bad AFSDB Subtype", l}, ""
 	} else {
 		rr.Subtype = uint16(i)
 	}
@@ -451,34 +455,31 @@ func setAFSDB(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	rr.Hostname = l.token
 	if l.token == "@" {
 		rr.Hostname = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok || l.length == 0 {
-		return nil, &ParseError{f, "bad AFSDB Hostname", l}, ""
+		return &ParseError{f, "bad AFSDB Hostname", l}, ""
 	}
 	if rr.Hostname[l.length-1] != '.' {
 		rr.Hostname = appendOrigin(rr.Hostname, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setX25(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
-	rr := new(X25)
-	rr.Hdr = h
-
+func setX25(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.PSDNAddress = l.token
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setKX(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setKX(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad KX Pref", l}, ""
+		return &ParseError{f, "bad KX Pref", l}, ""
 	} else {
 		rr.Preference = uint16(i)
 	}
@@ -487,63 +488,63 @@ func setKX(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	rr.Exchanger = l.token
 	if l.token == "@" {
 		rr.Exchanger = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok || l.length == 0 {
-		return nil, &ParseError{f, "bad KX Exchanger", l}, ""
+		return &ParseError{f, "bad KX Exchanger", l}, ""
 	}
 	if rr.Exchanger[l.length-1] != '.' {
 		rr.Exchanger = appendOrigin(rr.Exchanger, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setCNAME(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setCNAME(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Target = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Target = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok || l.length == 0 {
-		return nil, &ParseError{f, "bad CNAME Target", l}, ""
+		return &ParseError{f, "bad CNAME Target", l}, ""
 	}
 	if rr.Target[l.length-1] != '.' {
 		rr.Target = appendOrigin(rr.Target, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setDNAME(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setDNAME(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Target = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Target = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad CNAME Target", l}, ""
+		return &ParseError{f, "bad CNAME Target", l}, ""
 	}
 	if rr.Target[l.length-1] != '.' {
 		rr.Target = appendOrigin(rr.Target, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setSOA(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setSOA(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.Ns = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	<-c // _BLANK
 	if l.token == "@" {
@@ -551,7 +552,7 @@ func setSOA(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	} else {
 		_, ok := IsDomainName(l.token)
 		if !ok {
-			return nil, &ParseError{f, "bad SOA Ns", l}, ""
+			return &ParseError{f, "bad SOA Ns", l}, ""
 		}
 		if rr.Ns[l.length-1] != '.' {
 			rr.Ns = appendOrigin(rr.Ns, o)
@@ -565,7 +566,7 @@ func setSOA(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	} else {
 		_, ok := IsDomainName(l.token)
 		if !ok || l.length == 0 {
-			return nil, &ParseError{f, "bad SOA Mbox", l}, ""
+			return &ParseError{f, "bad SOA Mbox", l}, ""
 		}
 		if rr.Mbox[l.length-1] != '.' {
 			rr.Mbox = appendOrigin(rr.Mbox, o)
@@ -582,10 +583,10 @@ func setSOA(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 		if j, e := strconv.Atoi(l.token); e != nil {
 			if i == 0 {
 				// Serial should be a number
-				return nil, &ParseError{f, "bad SOA zone parameter", l}, ""
+				return &ParseError{f, "bad SOA zone parameter", l}, ""
 			}
 			if v, ok = stringToTtl(l.token); !ok {
-				return nil, &ParseError{f, "bad SOA zone parameter", l}, ""
+				return &ParseError{f, "bad SOA zone parameter", l}, ""
 
 			}
 		} else {
@@ -608,30 +609,30 @@ func setSOA(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 			rr.Minttl = v
 		}
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setSRV(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setSRV(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad SRV Priority", l}, ""
+		return  &ParseError{f, "bad SRV Priority", l}, ""
 	} else {
 		rr.Priority = uint16(i)
 	}
 	<-c     // _BLANK
 	l = <-c // _STRING
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad SRV Weight", l}, ""
+		return &ParseError{f, "bad SRV Weight", l}, ""
 	} else {
 		rr.Weight = uint16(i)
 	}
 	<-c     // _BLANK
 	l = <-c // _STRING
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad SRV Port", l}, ""
+		return &ParseError{f, "bad SRV Port", l}, ""
 	} else {
 		rr.Port = uint16(i)
 	}
@@ -640,32 +641,32 @@ func setSRV(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	rr.Target = l.token
 	if l.token == "@" {
 		rr.Target = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok || l.length == 0 {
-		return nil, &ParseError{f, "bad SRV Target", l}, ""
+		return &ParseError{f, "bad SRV Target", l}, ""
 	}
 	if rr.Target[l.length-1] != '.' {
 		rr.Target = appendOrigin(rr.Target, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setNAPTR(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setNAPTR(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad NAPTR Order", l}, ""
+		return &ParseError{f, "bad NAPTR Order", l}, ""
 	} else {
 		rr.Order = uint16(i)
 	}
 	<-c     // _BLANK
 	l = <-c // _STRING
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad NAPTR Preference", l}, ""
+		return &ParseError{f, "bad NAPTR Preference", l}, ""
 	} else {
 		rr.Preference = uint16(i)
 	}
@@ -673,57 +674,57 @@ func setNAPTR(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	<-c     // _BLANK
 	l = <-c // _QUOTE
 	if l.value != _QUOTE {
-		return nil, &ParseError{f, "bad NAPTR Flags", l}, ""
+		return &ParseError{f, "bad NAPTR Flags", l}, ""
 	}
 	l = <-c // Either String or Quote
 	if l.value == _STRING {
 		rr.Flags = l.token
 		l = <-c // _QUOTE
 		if l.value != _QUOTE {
-			return nil, &ParseError{f, "bad NAPTR Flags", l}, ""
+			return &ParseError{f, "bad NAPTR Flags", l}, ""
 		}
 	} else if l.value == _QUOTE {
 		rr.Flags = ""
 	} else {
-		return nil, &ParseError{f, "bad NAPTR Flags", l}, ""
+		return &ParseError{f, "bad NAPTR Flags", l}, ""
 	}
 
 	// Service
 	<-c     // _BLANK
 	l = <-c // _QUOTE
 	if l.value != _QUOTE {
-		return nil, &ParseError{f, "bad NAPTR Service", l}, ""
+		return &ParseError{f, "bad NAPTR Service", l}, ""
 	}
 	l = <-c // Either String or Quote
 	if l.value == _STRING {
 		rr.Service = l.token
 		l = <-c // _QUOTE
 		if l.value != _QUOTE {
-			return nil, &ParseError{f, "bad NAPTR Service", l}, ""
+			return &ParseError{f, "bad NAPTR Service", l}, ""
 		}
 	} else if l.value == _QUOTE {
 		rr.Service = ""
 	} else {
-		return nil, &ParseError{f, "bad NAPTR Service", l}, ""
+		return &ParseError{f, "bad NAPTR Service", l}, ""
 	}
 
 	// Regexp
 	<-c     // _BLANK
 	l = <-c // _QUOTE
 	if l.value != _QUOTE {
-		return nil, &ParseError{f, "bad NAPTR Regexp", l}, ""
+		return &ParseError{f, "bad NAPTR Regexp", l}, ""
 	}
 	l = <-c // Either String or Quote
 	if l.value == _STRING {
 		rr.Regexp = l.token
 		l = <-c // _QUOTE
 		if l.value != _QUOTE {
-			return nil, &ParseError{f, "bad NAPTR Regexp", l}, ""
+			return &ParseError{f, "bad NAPTR Regexp", l}, ""
 		}
 	} else if l.value == _QUOTE {
 		rr.Regexp = ""
 	} else {
-		return nil, &ParseError{f, "bad NAPTR Regexp", l}, ""
+		return &ParseError{f, "bad NAPTR Regexp", l}, ""
 	}
 	// After quote no space??
 	<-c     // _BLANK
@@ -731,30 +732,30 @@ func setNAPTR(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	rr.Replacement = l.token
 	if l.token == "@" {
 		rr.Replacement = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok || l.length == 0 {
-		return nil, &ParseError{f, "bad NAPTR Replacement", l}, ""
+		return &ParseError{f, "bad NAPTR Replacement", l}, ""
 	}
 	if rr.Replacement[l.length-1] != '.' {
 		rr.Replacement = appendOrigin(rr.Replacement, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setTALINK(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setTALINK(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.PreviousName = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.PreviousName = o
 	} else {
 		_, ok := IsDomainName(l.token)
 		if !ok {
-			return nil, &ParseError{f, "bad TALINK PreviousName", l}, ""
+			return &ParseError{f, "bad TALINK PreviousName", l}, ""
 		}
 		if rr.PreviousName[l.length-1] != '.' {
 			rr.PreviousName = appendOrigin(rr.PreviousName, o)
@@ -765,19 +766,19 @@ func setTALINK(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	rr.NextName = l.token
 	if l.token == "@" {
 		rr.NextName = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok || l.length == 0 {
-		return nil, &ParseError{f, "bad TALINK NextName", l}, ""
+		return &ParseError{f, "bad TALINK NextName", l}, ""
 	}
 	if rr.NextName[l.length-1] != '.' {
 		rr.NextName = appendOrigin(rr.NextName, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setLOC(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setLOC(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	// Non zero defaults for LOC record, see RFC 1876, Section 3.
 	rr.HorizPre = 165 // 10000
 	rr.VertPre = 162  // 10
@@ -786,10 +787,10 @@ func setLOC(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	// North
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad LOC Latitude", l}, ""
+		return &ParseError{f, "bad LOC Latitude", l}, ""
 	} else {
 		rr.Latitude = 1000 * 60 * 60 * uint32(i)
 	}
@@ -800,14 +801,14 @@ func setLOC(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 		goto East
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad LOC Latitude minutes", l}, ""
+		return  &ParseError{f, "bad LOC Latitude minutes", l}, ""
 	} else {
 		rr.Latitude += 1000 * 60 * uint32(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.ParseFloat(l.token, 32); e != nil {
-		return nil, &ParseError{f, "bad LOC Latitude seconds", l}, ""
+		return  &ParseError{f, "bad LOC Latitude seconds", l}, ""
 	} else {
 		rr.Latitude += uint32(1000 * i)
 	}
@@ -818,14 +819,14 @@ func setLOC(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 		goto East
 	}
 	// If still alive, flag an error
-	return nil, &ParseError{f, "bad LOC Latitude North/South", l}, ""
+	return  &ParseError{f, "bad LOC Latitude North/South", l}, ""
 
 East:
 	// East
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad LOC Longitude", l}, ""
+		return  &ParseError{f, "bad LOC Longitude", l}, ""
 	} else {
 		rr.Longitude = 1000 * 60 * 60 * uint32(i)
 	}
@@ -836,14 +837,14 @@ East:
 		goto Altitude
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad LOC Longitude minutes", l}, ""
+		return  &ParseError{f, "bad LOC Longitude minutes", l}, ""
 	} else {
 		rr.Longitude += 1000 * 60 * uint32(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.ParseFloat(l.token, 32); e != nil {
-		return nil, &ParseError{f, "bad LOC Longitude seconds", l}, ""
+		return  &ParseError{f, "bad LOC Longitude seconds", l}, ""
 	} else {
 		rr.Longitude += uint32(1000 * i)
 	}
@@ -854,7 +855,7 @@ East:
 		goto Altitude
 	}
 	// If still alive, flag an error
-	return nil, &ParseError{f, "bad LOC Longitude East/West", l}, ""
+	return  &ParseError{f, "bad LOC Longitude East/West", l}, ""
 
 Altitude:
 	<-c // _BLANK
@@ -863,7 +864,7 @@ Altitude:
 		l.token = l.token[0 : len(l.token)-1]
 	}
 	if i, e := strconv.ParseFloat(l.token, 32); e != nil {
-		return nil, &ParseError{f, "bad LOC Altitude", l}, ""
+		return  &ParseError{f, "bad LOC Altitude", l}, ""
 	} else {
 		rr.Altitude = uint32(i*100.0 + 10000000.0 + 0.5)
 	}
@@ -877,13 +878,13 @@ Altitude:
 			switch count {
 			case 0: // Size
 				if e, m, ok := stringToCm(l.token); !ok {
-					return nil, &ParseError{f, "bad LOC Size", l}, ""
+					return  &ParseError{f, "bad LOC Size", l}, ""
 				} else {
 					rr.Size = (e & 0x0f) | (m << 4 & 0xf0)
 				}
 			case 1: // HorizPre
 				if e, m, ok := stringToCm(l.token); !ok {
-					return nil, &ParseError{f, "bad LOC HorizPre", l}, ""
+					return  &ParseError{f, "bad LOC HorizPre", l}, ""
 				} else {
 					rr.HorizPre = (e & 0x0f) | (m << 4 & 0xf0)
 				}
@@ -898,21 +899,21 @@ Altitude:
 		case _BLANK:
 			// Ok
 		default:
-			return nil, &ParseError{f, "bad LOC Size, HorizPre or VertPre", l}, ""
+			return  &ParseError{f, "bad LOC Size, HorizPre or VertPre", l}, ""
 		}
 		l = <-c
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setHIP(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setHIP(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	// HitLength is not represented
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad HIP PublicKeyAlgorithm", l}, ""
+		return  &ParseError{f, "bad HIP PublicKeyAlgorithm", l}, ""
 	} else {
 		rr.PublicKeyAlgorithm = uint8(i)
 	}
@@ -938,7 +939,7 @@ func setHIP(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 			}
 			_, ok := IsDomainName(l.token)
 			if !ok || l.length == 0 {
-				return nil, &ParseError{f, "bad HIP RendezvousServers", l}, ""
+				return  &ParseError{f, "bad HIP RendezvousServers", l}, ""
 			}
 			if l.token[l.length-1] != '.' {
 				l.token = appendOrigin(l.token, o)
@@ -947,69 +948,69 @@ func setHIP(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 		case _BLANK:
 			// Ok
 		default:
-			return nil, &ParseError{f, "bad HIP RendezvousServers", l}, ""
+			return  &ParseError{f, "bad HIP RendezvousServers", l}, ""
 		}
 		l = <-c
 	}
 	rr.RendezvousServers = xs
-	return rr, nil, l.comment
+	return nil, l.comment
 }
 
-func setCERT(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setCERT(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad CERT Type", l}, ""
+		return  &ParseError{f, "bad CERT Type", l}, ""
 	} else {
 		rr.Type = uint16(i)
 	}
 	<-c     // _BLANK
 	l = <-c // _STRING
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad CERT KeyTag", l}, ""
+		return  &ParseError{f, "bad CERT KeyTag", l}, ""
 	} else {
 		rr.KeyTag = uint16(i)
 	}
 	<-c     // _BLANK
 	l = <-c // _STRING
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad CERT Algorithm", l}, ""
+		return  &ParseError{f, "bad CERT Algorithm", l}, ""
 	} else {
 		rr.Algorithm = uint8(i)
 	}
 	s, e, c1 := endingToString(c, "bad CERT Certificate", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.Certificate = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setOPENPGPKEY(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setOPENPGPKEY(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	s, e, c1 := endingToString(c, "bad OPENPGPKEY PublicKey", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.PublicKey = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setRRSIG(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setRRSIG(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if t, ok := StringToType[l.tokenUpper]; !ok {
 		if strings.HasPrefix(l.tokenUpper, "TYPE") {
 			if t, ok = typeToInt(l.tokenUpper); !ok {
-				return nil, &ParseError{f, "bad RRSIG Typecovered", l}, ""
+				return  &ParseError{f, "bad RRSIG Typecovered", l}, ""
 			} else {
 				rr.TypeCovered = t
 			}
 		} else {
-			return nil, &ParseError{f, "bad RRSIG Typecovered", l}, ""
+			return  &ParseError{f, "bad RRSIG Typecovered", l}, ""
 		}
 	} else {
 		rr.TypeCovered = t
@@ -1017,21 +1018,21 @@ func setRRSIG(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	<-c // _BLANK
 	l = <-c
 	if i, err := strconv.Atoi(l.token); err != nil {
-		return nil, &ParseError{f, "bad RRSIG Algorithm", l}, ""
+		return  &ParseError{f, "bad RRSIG Algorithm", l}, ""
 	} else {
 		rr.Algorithm = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, err := strconv.Atoi(l.token); err != nil {
-		return nil, &ParseError{f, "bad RRSIG Labels", l}, ""
+		return  &ParseError{f, "bad RRSIG Labels", l}, ""
 	} else {
 		rr.Labels = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, err := strconv.Atoi(l.token); err != nil {
-		return nil, &ParseError{f, "bad RRSIG OrigTtl", l}, ""
+		return  &ParseError{f, "bad RRSIG OrigTtl", l}, ""
 	} else {
 		rr.OrigTtl = uint32(i)
 	}
@@ -1043,7 +1044,7 @@ func setRRSIG(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 			// TODO(miek): error out on > MAX_UINT32, same below
 			rr.Expiration = uint32(i)
 		} else {
-			return nil, &ParseError{f, "bad RRSIG Expiration", l}, ""
+			return  &ParseError{f, "bad RRSIG Expiration", l}, ""
 		}
 	} else {
 		rr.Expiration = i
@@ -1054,7 +1055,7 @@ func setRRSIG(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 		if i, err := strconv.ParseInt(l.token, 10, 64); err == nil {
 			rr.Inception = uint32(i)
 		} else {
-			return nil, &ParseError{f, "bad RRSIG Inception", l}, ""
+			return  &ParseError{f, "bad RRSIG Inception", l}, ""
 		}
 	} else {
 		rr.Inception = i
@@ -1062,7 +1063,7 @@ func setRRSIG(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	<-c // _BLANK
 	l = <-c
 	if i, err := strconv.Atoi(l.token); err != nil {
-		return nil, &ParseError{f, "bad RRSIG KeyTag", l}, ""
+		return  &ParseError{f, "bad RRSIG KeyTag", l}, ""
 	} else {
 		rr.KeyTag = uint16(i)
 	}
@@ -1074,7 +1075,7 @@ func setRRSIG(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	} else {
 		_, ok := IsDomainName(l.token)
 		if !ok || l.length == 0 {
-			return nil, &ParseError{f, "bad RRSIG SignerName", l}, ""
+			return  &ParseError{f, "bad RRSIG SignerName", l}, ""
 		}
 		if rr.SignerName[l.length-1] != '.' {
 			rr.SignerName = appendOrigin(rr.SignerName, o)
@@ -1082,24 +1083,24 @@ func setRRSIG(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	}
 	s, e, c1 := endingToString(c, "bad RRSIG Signature", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.Signature = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setNSEC(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setNSEC(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	rr.NextDomain = l.token
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if l.token == "@" {
 		rr.NextDomain = o
 	} else {
 		_, ok := IsDomainName(l.token)
 		if !ok {
-			return nil, &ParseError{f, "bad NSEC NextDomain", l}, ""
+			return  &ParseError{f, "bad NSEC NextDomain", l}, ""
 		}
 		if rr.NextDomain[l.length-1] != '.' {
 			rr.NextDomain = appendOrigin(rr.NextDomain, o)
@@ -1119,46 +1120,46 @@ func setNSEC(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 		case _STRING:
 			if k, ok = StringToType[l.tokenUpper]; !ok {
 				if k, ok = typeToInt(l.tokenUpper); !ok {
-					return nil, &ParseError{f, "bad NSEC TypeBitMap", l}, ""
+					return  &ParseError{f, "bad NSEC TypeBitMap", l}, ""
 				}
 			}
 			rr.TypeBitMap = append(rr.TypeBitMap, k)
 		default:
-			return nil, &ParseError{f, "bad NSEC TypeBitMap", l}, ""
+			return  &ParseError{f, "bad NSEC TypeBitMap", l}, ""
 		}
 		l = <-c
 	}
-	return rr, nil, l.comment
+	return nil, l.comment
 }
 
-func setNSEC3(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setNSEC3(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad NSEC3 Hash", l}, ""
+		return  &ParseError{f, "bad NSEC3 Hash", l}, ""
 	} else {
 		rr.Hash = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad NSEC3 Flags", l}, ""
+		return  &ParseError{f, "bad NSEC3 Flags", l}, ""
 	} else {
 		rr.Flags = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad NSEC3 Iterations", l}, ""
+		return  &ParseError{f, "bad NSEC3 Iterations", l}, ""
 	} else {
 		rr.Iterations = uint16(i)
 	}
 	<-c
 	l = <-c
 	if len(l.token) == 0 {
-		return nil, &ParseError{f, "bad NSEC3 Salt", l}, ""
+		return  &ParseError{f, "bad NSEC3 Salt", l}, ""
 	}
 	rr.SaltLength = uint8(len(l.token)) / 2
 	rr.Salt = l.token
@@ -1181,39 +1182,39 @@ func setNSEC3(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 		case _STRING:
 			if k, ok = StringToType[l.tokenUpper]; !ok {
 				if k, ok = typeToInt(l.tokenUpper); !ok {
-					return nil, &ParseError{f, "bad NSEC3 TypeBitMap", l}, ""
+					return  &ParseError{f, "bad NSEC3 TypeBitMap", l}, ""
 				}
 			}
 			rr.TypeBitMap = append(rr.TypeBitMap, k)
 		default:
-			return nil, &ParseError{f, "bad NSEC3 TypeBitMap", l}, ""
+			return  &ParseError{f, "bad NSEC3 TypeBitMap", l}, ""
 		}
 		l = <-c
 	}
-	return rr, nil, l.comment
+	return nil, l.comment
 }
 
-func setNSEC3PARAM(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setNSEC3PARAM(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad NSEC3PARAM Hash", l}, ""
+		return  &ParseError{f, "bad NSEC3PARAM Hash", l}, ""
 	} else {
 		rr.Hash = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad NSEC3PARAM Flags", l}, ""
+		return  &ParseError{f, "bad NSEC3PARAM Flags", l}, ""
 	} else {
 		rr.Flags = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad NSEC3PARAM Iterations", l}, ""
+		return  &ParseError{f, "bad NSEC3PARAM Iterations", l}, ""
 	} else {
 		rr.Iterations = uint16(i)
 	}
@@ -1221,16 +1222,16 @@ func setNSEC3PARAM(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	l = <-c
 	rr.SaltLength = uint8(len(l.token))
 	rr.Salt = l.token
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setEUI48(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setEUI48(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.length != 17 {
-		return nil, &ParseError{f, "bad EUI48 Address", l}, ""
+		return  &ParseError{f, "bad EUI48 Address", l}, ""
 	}
 	addr := make([]byte, 12)
 	dash := 0
@@ -1239,27 +1240,27 @@ func setEUI48(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 		addr[i+1] = l.token[i+1+dash]
 		dash++
 		if l.token[i+1+dash] != '-' {
-			return nil, &ParseError{f, "bad EUI48 Address", l}, ""
+			return  &ParseError{f, "bad EUI48 Address", l}, ""
 		}
 	}
 	addr[10] = l.token[15]
 	addr[11] = l.token[16]
 
 	if i, e := strconv.ParseUint(string(addr), 16, 48); e != nil {
-		return nil, &ParseError{f, "bad EUI48 Address", l}, ""
+		return  &ParseError{f, "bad EUI48 Address", l}, ""
 	} else {
 		rr.Address = i
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setEUI64(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setEUI64(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.length != 23 {
-		return nil, &ParseError{f, "bad EUI64 Address", l}, ""
+		return  &ParseError{f, "bad EUI64 Address", l}, ""
 	}
 	addr := make([]byte, 16)
 	dash := 0
@@ -1268,35 +1269,35 @@ func setEUI64(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 		addr[i+1] = l.token[i+1+dash]
 		dash++
 		if l.token[i+1+dash] != '-' {
-			return nil, &ParseError{f, "bad EUI64 Address", l}, ""
+			return  &ParseError{f, "bad EUI64 Address", l}, ""
 		}
 	}
 	addr[14] = l.token[21]
 	addr[15] = l.token[22]
 
 	if i, e := strconv.ParseUint(string(addr), 16, 64); e != nil {
-		return nil, &ParseError{f, "bad EUI68 Address", l}, ""
+		return  &ParseError{f, "bad EUI68 Address", l}, ""
 	} else {
 		rr.Address = uint64(i)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setWKS(r RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setWKS(r RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	rr.Address = net.ParseIP(l.token)
 	if rr.Address == nil {
-		return nil, &ParseError{f, "bad WKS Address", l}, ""
+		return  &ParseError{f, "bad WKS Address", l}, ""
 	}
 
 	<-c // _BLANK
 	l = <-c
 	proto := "tcp"
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad WKS Protocol", l}, ""
+		return  &ParseError{f, "bad WKS Protocol", l}, ""
 	} else {
 		rr.Protocol = uint8(i)
 		switch rr.Protocol {
@@ -1305,7 +1306,7 @@ func setWKS(r RR, c chan lex, o, f string) (RR, *ParseError, string) {
 		case 6:
 			proto = "tcp"
 		default:
-			return nil, &ParseError{f, "bad WKS Protocol", l}, ""
+			return  &ParseError{f, "bad WKS Protocol", l}, ""
 		}
 	}
 
@@ -1325,112 +1326,112 @@ func setWKS(r RR, c chan lex, o, f string) (RR, *ParseError, string) {
 				if i, e := strconv.Atoi(l.token); e != nil { // If a number use that
 					rr.BitMap = append(rr.BitMap, uint16(i))
 				} else {
-					return nil, &ParseError{f, "bad WKS BitMap", l}, ""
+					return  &ParseError{f, "bad WKS BitMap", l}, ""
 				}
 			}
 			rr.BitMap = append(rr.BitMap, uint16(k))
 		default:
-			return nil, &ParseError{f, "bad WKS BitMap", l}, ""
+			return  &ParseError{f, "bad WKS BitMap", l}, ""
 		}
 		l = <-c
 	}
-	return rr, nil, l.comment
+	return nil, l.comment
 }
 
-func setSSHFP(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setSSHFP(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad SSHFP Algorithm", l}, ""
+		return  &ParseError{f, "bad SSHFP Algorithm", l}, ""
 	} else {
 		rr.Algorithm = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad SSHFP Type", l}, ""
+		return  &ParseError{f, "bad SSHFP Type", l}, ""
 	} else {
 		rr.Type = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	rr.FingerPrint = l.token
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setDNSKEY(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setDNSKEY(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad DNSKEY Flags", l}, ""
+		return  &ParseError{f, "bad DNSKEY Flags", l}, ""
 	} else {
 		rr.Flags = uint16(i)
 	}
 	<-c     // _BLANK
 	l = <-c // _STRING
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad DNSKEY Protocol", l}, ""
+		return  &ParseError{f, "bad DNSKEY Protocol", l}, ""
 	} else {
 		rr.Protocol = uint8(i)
 	}
 	<-c     // _BLANK
 	l = <-c // _STRING
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad DNSKEY Algorithm", l}, ""
+		return  &ParseError{f, "bad DNSKEY Algorithm", l}, ""
 	} else {
 		rr.Algorithm = uint8(i)
 	}
 	s, e, c1 := endingToString(c, "bad DNSKEY PublicKey", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.PublicKey = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setRKEY(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setRKEY(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad RKEY Flags", l}, ""
+		return  &ParseError{f, "bad RKEY Flags", l}, ""
 	} else {
 		rr.Flags = uint16(i)
 	}
 	<-c     // _BLANK
 	l = <-c // _STRING
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad RKEY Protocol", l}, ""
+		return  &ParseError{f, "bad RKEY Protocol", l}, ""
 	} else {
 		rr.Protocol = uint8(i)
 	}
 	<-c     // _BLANK
 	l = <-c // _STRING
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad RKEY Algorithm", l}, ""
+		return  &ParseError{f, "bad RKEY Algorithm", l}, ""
 	} else {
 		rr.Algorithm = uint8(i)
 	}
 	s, e, c1 := endingToString(c, "bad RKEY PublicKey", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.PublicKey = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setDS(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setDS(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad DS KeyTag", l}, ""
+		return  &ParseError{f, "bad DS KeyTag", l}, ""
 	} else {
 		rr.KeyTag = uint16(i)
 	}
@@ -1438,7 +1439,7 @@ func setDS(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
 		if i, ok := StringToAlgorithm[l.tokenUpper]; !ok {
-			return nil, &ParseError{f, "bad DS Algorithm", l}, ""
+			return  &ParseError{f, "bad DS Algorithm", l}, ""
 		} else {
 			rr.Algorithm = i
 		}
@@ -1448,89 +1449,89 @@ func setDS(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad DS DigestType", l}, ""
+		return  &ParseError{f, "bad DS DigestType", l}, ""
 	} else {
 		rr.DigestType = uint8(i)
 	}
 	s, e, c1 := endingToString(c, "bad DS Digest", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.Digest = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setEID(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setEID(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	s, e, c1 := endingToString(c, "bad EID Endpoint", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.Endpoint = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setNIMLOC(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setNIMLOC(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	s, e, c1 := endingToString(c, "bad NIMLOC Locator", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.Locator = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setNSAP(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setNSAP(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad NSAP Length", l}, ""
+		return  &ParseError{f, "bad NSAP Length", l}, ""
 	} else {
 		rr.Length = uint8(i)
 	}
 	<-c // _BLANK
 	s, e, c1 := endingToString(c, "bad NSAP Nsap", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.Nsap = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setGPOS(r RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setGPOS(r RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if _, e := strconv.ParseFloat(l.token, 64); e != nil {
-		return nil, &ParseError{f, "bad GPOS Longitude", l}, ""
+		return  &ParseError{f, "bad GPOS Longitude", l}, ""
 	} else {
 		rr.Longitude = l.token
 	}
 	<-c // _BLANK
 	l = <-c
 	if _, e := strconv.ParseFloat(l.token, 64); e != nil {
-		return nil, &ParseError{f, "bad GPOS Latitude", l}, ""
+		return  &ParseError{f, "bad GPOS Latitude", l}, ""
 	} else {
 		rr.Latitude = l.token
 	}
 	<-c // _BLANK
 	l = <-c
 	if _, e := strconv.ParseFloat(l.token, 64); e != nil {
-		return nil, &ParseError{f, "bad GPOS Altitude", l}, ""
+		return  &ParseError{f, "bad GPOS Altitude", l}, ""
 	} else {
 		rr.Altitude = l.token
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setCDS(r RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setCDS(r RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad CDS KeyTag", l}, ""
+		return  &ParseError{f, "bad CDS KeyTag", l}, ""
 	} else {
 		rr.KeyTag = uint16(i)
 	}
@@ -1538,7 +1539,7 @@ func setCDS(r RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
 		if i, ok := StringToAlgorithm[l.tokenUpper]; !ok {
-			return nil, &ParseError{f, "bad CDS Algorithm", l}, ""
+			return  &ParseError{f, "bad CDS Algorithm", l}, ""
 		} else {
 			rr.Algorithm = i
 		}
@@ -1548,25 +1549,25 @@ func setCDS(r RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad CDS DigestType", l}, ""
+		return  &ParseError{f, "bad CDS DigestType", l}, ""
 	} else {
 		rr.DigestType = uint8(i)
 	}
 	s, e, c1 := endingToString(c, "bad CDS Digest", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.Digest = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setDLV(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setDLV(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad DLV KeyTag", l}, ""
+		return  &ParseError{f, "bad DLV KeyTag", l}, ""
 	} else {
 		rr.KeyTag = uint16(i)
 	}
@@ -1574,7 +1575,7 @@ func setDLV(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
 		if i, ok := StringToAlgorithm[l.tokenUpper]; !ok {
-			return nil, &ParseError{f, "bad DLV Algorithm", l}, ""
+			return  &ParseError{f, "bad DLV Algorithm", l}, ""
 		} else {
 			rr.Algorithm = i
 		}
@@ -1584,27 +1585,25 @@ func setDLV(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad DLV DigestType", l}, ""
+		return  &ParseError{f, "bad DLV DigestType", l}, ""
 	} else {
 		rr.DigestType = uint8(i)
 	}
 	s, e, c1 := endingToString(c, "bad DLV Digest", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.Digest = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setTA(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
-	rr := new(TA)
-	rr.Hdr = h
+func setTA(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad TA KeyTag", l}, ""
+		return  &ParseError{f, "bad TA KeyTag", l}, ""
 	} else {
 		rr.KeyTag = uint16(i)
 	}
@@ -1612,7 +1611,7 @@ func setTA(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
 		if i, ok := StringToAlgorithm[l.tokenUpper]; !ok {
-			return nil, &ParseError{f, "bad TA Algorithm", l}, ""
+			return  &ParseError{f, "bad TA Algorithm", l}, ""
 		} else {
 			rr.Algorithm = i
 		}
@@ -1622,118 +1621,116 @@ func setTA(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad TA DigestType", l}, ""
+		return  &ParseError{f, "bad TA DigestType", l}, ""
 	} else {
 		rr.DigestType = uint8(i)
 	}
 	s, e, c1 := endingToString(c, "bad TA Digest", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.Digest = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setTLSA(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
-	rr := new(TLSA)
-	rr.Hdr = h
+func setTLSA(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad TLSA Usage", l}, ""
+		return  &ParseError{f, "bad TLSA Usage", l}, ""
 	} else {
 		rr.Usage = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad TLSA Selector", l}, ""
+		return  &ParseError{f, "bad TLSA Selector", l}, ""
 	} else {
 		rr.Selector = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad TLSA MatchingType", l}, ""
+		return  &ParseError{f, "bad TLSA MatchingType", l}, ""
 	} else {
 		rr.MatchingType = uint8(i)
 	}
 	s, e, c1 := endingToString(c, "bad TLSA Certificate", f)
 	if e != nil {
-		return nil, e, c1
+		return  e, c1
 	}
 	rr.Certificate = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setRFC3597(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setRFC3597(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.token != "\\#" {
-		return nil, &ParseError{f, "bad RFC3597 Rdata", l}, ""
+		return &ParseError{f, "bad RFC3597 Rdata", l}, ""
 	}
 	<-c // _BLANK
 	l = <-c
 	rdlength, e := strconv.Atoi(l.token)
 	if e != nil {
-		return nil, &ParseError{f, "bad RFC3597 Rdata ", l}, ""
+		return &ParseError{f, "bad RFC3597 Rdata ", l}, ""
 	}
 
 	s, e1, c1 := endingToString(c, "bad RFC3597 Rdata", f)
 	if e1 != nil {
-		return nil, e1, c1
+		return e1, c1
 	}
 	if rdlength*2 != len(s) {
-		return nil, &ParseError{f, "bad RFC3597 Rdata", l}, ""
+		return &ParseError{f, "bad RFC3597 Rdata", l}, ""
 	}
 	rr.Rdata = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setSPF(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setSPF(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	s, e, c1 := endingToTxtSlice(c, "bad SPF Txt", f)
 	if e != nil {
-		return nil, e, ""
+		return e, ""
 	}
 	rr.Txt = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setTXT(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setTXT(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	// No _BLANK reading here, because this is all rdata is TXT
 	s, e, c1 := endingToTxtSlice(c, "bad TXT Txt", f)
 	if e != nil {
-		return nil, e, ""
+		return e, ""
 	}
 	rr.Txt = s
-	return rr, nil, c1
+	return nil, c1
 }
 
 // identical to setTXT
-func setNINFO(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setNINFO(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	s, e, c1 := endingToTxtSlice(c, "bad NINFO ZSData", f)
 	if e != nil {
-		return nil, e, ""
+		return e, ""
 	}
 	rr.ZSData = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setURI(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setURI(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return nil, l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad URI Priority", l}, ""
+		return &ParseError{f, "bad URI Priority", l}, ""
 	} else {
 		rr.Priority = uint16(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad URI Weight", l}, ""
+		return &ParseError{f, "bad URI Weight", l}, ""
 	} else {
 		rr.Weight = uint16(i)
 	}
@@ -1741,33 +1738,33 @@ func setURI(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	<-c // _BLANK
 	s, e, c1 := endingToTxtSlice(c, "bad URI Target", f)
 	if e != nil {
-		return nil, e, ""
+		return e, ""
 	}
 	rr.Target = s
-	return rr, nil, c1
+	return  nil, c1
 }
 
-func setIPSECKEY(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setIPSECKEY(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, l.comment
+		return l.comment
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad IPSECKEY Precedence", l}, ""
+		return &ParseError{f, "bad IPSECKEY Precedence", l}, ""
 	} else {
 		rr.Precedence = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad IPSECKEY GatewayType", l}, ""
+		return &ParseError{f, "bad IPSECKEY GatewayType", l}, ""
 	} else {
 		rr.GatewayType = uint8(i)
 	}
 	<-c // _BLANK
 	l = <-c
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad IPSECKEY Algorithm", l}, ""
+		return &ParseError{f, "bad IPSECKEY Algorithm", l}, ""
 	} else {
 		rr.Algorithm = uint8(i)
 	}
@@ -1776,29 +1773,29 @@ func setIPSECKEY(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	rr.Gateway = l.token
 	s, e, c1 := endingToString(c, "bad IPSECKEY PublicKey", f)
 	if e != nil {
-		return nil, e, c1
+		return e, c1
 	}
 	rr.PublicKey = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setDHCID(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setDHCID(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	// awesome record to parse!
 	s, e, c1 := endingToString(c, "bad DHCID Digest", f)
 	if e != nil {
-		return nil, e, c1
+		return e, c1
 	}
 	rr.Digest = s
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setNID(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setNID(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad NID Preference", l}, ""
+		return &ParseError{f, "bad NID Preference", l}, ""
 	} else {
 		rr.Preference = uint16(i)
 	}
@@ -1806,19 +1803,19 @@ func setNID(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	l = <-c // _STRING
 	u, err := stringToNodeID(l)
 	if err != nil {
-		return nil, err, ""
+		return err, ""
 	}
 	rr.NodeID = u
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setL32(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setL32(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad L32 Preference", l}, ""
+		return &ParseError{f, "bad L32 Preference", l}, ""
 	} else {
 		rr.Preference = uint16(i)
 	}
@@ -1826,18 +1823,18 @@ func setL32(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	l = <-c // _STRING
 	rr.Locator32 = net.ParseIP(l.token)
 	if rr.Locator32 == nil {
-		return nil, &ParseError{f, "bad L32 Locator", l}, ""
+		return &ParseError{f, "bad L32 Locator", l}, ""
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setLP(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setLP(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad LP Preference", l}, ""
+		return &ParseError{f, "bad LP Preference", l}, ""
 	} else {
 		rr.Preference = uint16(i)
 	}
@@ -1845,29 +1842,29 @@ func setLP(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	l = <-c // _STRING
 	rr.Fqdn = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Fqdn = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok || l.length == 0 {
-		return nil, &ParseError{f, "bad LP Fqdn", l}, ""
+		return &ParseError{f, "bad LP Fqdn", l}, ""
 	}
 	if rr.Fqdn[l.length-1] != '.' {
 		rr.Fqdn = appendOrigin(rr.Fqdn, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setL64(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setL64(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad L64 Preference", l}, ""
+		return &ParseError{f, "bad L64 Preference", l}, ""
 	} else {
 		rr.Preference = uint16(i)
 	}
@@ -1875,54 +1872,54 @@ func setL64(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	l = <-c // _STRING
 	u, err := stringToNodeID(l)
 	if err != nil {
-		return nil, err, ""
+		return err, ""
 	}
 	rr.Locator64 = u
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setUID(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setUID(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad UID Uid", l}, ""
+		return ParseError{f, "bad UID Uid", l}, ""
 	} else {
 		rr.Uid = uint32(i)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setGID(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setGID(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad GID Gid", l}, ""
+		return &ParseError{f, "bad GID Gid", l}, ""
 	} else {
 		rr.Gid = uint32(i)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
-func setUINFO(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setUINFO(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	s, e, c1 := endingToTxtSlice(c, "bad UINFO Uinfo", f)
 	if e != nil {
-		return nil, e, ""
+		return e, ""
 	}
 	rr.Uinfo = s[0] // silently discard anything above
-	return rr, nil, c1
+	return nil, c1
 }
 
-func setPX(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
+func setPX(rr RR, c chan lex, o, f string) (*ParseError, string) {
 	l := <-c
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if i, e := strconv.Atoi(l.token); e != nil {
-		return nil, &ParseError{f, "bad PX Preference", l}, ""
+		return &ParseError{f, "bad PX Preference", l}, ""
 	} else {
 		rr.Preference = uint16(i)
 	}
@@ -1930,15 +1927,15 @@ func setPX(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	l = <-c // _STRING
 	rr.Map822 = l.token
 	if l.length == 0 {
-		return rr, nil, ""
+		return nil, ""
 	}
 	if l.token == "@" {
 		rr.Map822 = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok := IsDomainName(l.token)
 	if !ok {
-		return nil, &ParseError{f, "bad PX Map822", l}, ""
+		return &ParseError{f, "bad PX Map822", l}, ""
 	}
 	if rr.Map822[l.length-1] != '.' {
 		rr.Map822 = appendOrigin(rr.Map822, o)
@@ -1948,16 +1945,16 @@ func setPX(rr RR, c chan lex, o, f string) (RR, *ParseError, string) {
 	rr.Mapx400 = l.token
 	if l.token == "@" {
 		rr.Mapx400 = o
-		return rr, nil, ""
+		return nil, ""
 	}
 	_, ok = IsDomainName(l.token)
 	if !ok || l.length == 0 {
-		return nil, &ParseError{f, "bad PX Mapx400", l}, ""
+		return &ParseError{f, "bad PX Mapx400", l}, ""
 	}
 	if rr.Mapx400[l.length-1] != '.' {
 		rr.Mapx400 = appendOrigin(rr.Mapx400, o)
 	}
-	return rr, nil, ""
+	return nil, ""
 }
 
 var typeToparserFunc = map[uint16]parserFunc{
