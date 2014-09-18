@@ -97,7 +97,7 @@ func (rr *OPT) String() string {
 	return s
 }
 
-func (rr *OPT) len() int {
+func (rr *OPT) Len() int {
 	l := rr.Hdr.Len()
 	for i := 0; i < len(rr.Option); i++ {
 		lo, _ := rr.Option[i].pack()
@@ -106,7 +106,7 @@ func (rr *OPT) len() int {
 	return l
 }
 
-func (rr *OPT) copy() RR {
+func (rr *OPT) Copy() RR {
 	return &OPT{*rr.Hdr.copyHeader(), rr.Option}
 }
 

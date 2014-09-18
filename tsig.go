@@ -107,12 +107,12 @@ func (rr *TSIG) String() string {
 	return s
 }
 
-func (rr *TSIG) len() int {
+func (rr *TSIG) Len() int {
 	return rr.Hdr.Len() + len(rr.Algorithm) + 1 + 6 +
 		4 + len(rr.MAC)/2 + 1 + 6 + len(rr.OtherData)/2 + 1
 }
 
-func (rr *TSIG) copy() RR {
+func (rr *TSIG) Copy() RR {
 	return &TSIG{*rr.Hdr.copyHeader(), rr.Algorithm, rr.TimeSigned, rr.Fudge, rr.MACSize, rr.MAC, rr.OrigId, rr.Error, rr.OtherLen, rr.OtherData}
 }
 

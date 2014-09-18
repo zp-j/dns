@@ -122,10 +122,10 @@ type RR interface {
 	Header() *RR_Header
 	// String returns the text representation of the resource record.
 	String() string
-	// copy returns a copy of the RR
-	copy() RR
-	// len returns the length (in octects) of the uncompressed RR in wire format.
-	len() int
+	// Copy returns a copy of the RR
+	Copy() RR
+	// Len returns the length (in octects) of the uncompressed RR in wire format.
+	Len() int
 }
 
 // DNS resource records.
@@ -141,8 +141,8 @@ type RR_Header struct {
 
 func (h *RR_Header) Header() *RR_Header { return h }
 
-// Just to imlement the RR interface
-func (h *RR_Header) copy() RR { return nil }
+// Just to imlement the RR interface.
+func (h *RR_Header) Copy() RR { return nil }
 
 func (h *RR_Header) copyHeader() *RR_Header {
 	r := new(RR_Header)
@@ -169,7 +169,7 @@ func (h *RR_Header) String() string {
 	return s
 }
 
-func (h *RR_Header) len() int {
+func (h *RR_Header) Len() int {
 	l := len(h.Name) + 1
 	l += 10 // rrtype(2) + class(2) + ttl(4) + rdlength(2)
 	return l
