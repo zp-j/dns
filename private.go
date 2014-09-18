@@ -4,6 +4,8 @@ package dns
 // Allows one took hook private RR (RFC XXXX) into this package and have
 // them function like the normal RR already there.
 
+var PrivateParserFunc = map[uint16]func(h RR_Header, l *Lexer, origin string) (RR, *ParseError, string){}
+
 // Lexer holds the lexer state when parsing a private RR.
 type Lexer struct {
 	c chan lex

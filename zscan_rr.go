@@ -43,7 +43,7 @@ func setRR(h RR_Header, c chan lex, o, f string) (RR, *ParseError, string) {
 		return parserfunc.Func(h, c, o, f)
 	}
 	// Check if somebody registred a PrivateRR.
-	privfunc, ok := privateParserFunc[h.Rrtype]
+	privfunc, ok := PrivateParserFunc[h.Rrtype]
 	if ok {
 		return privfunc(h, &Lexer{c: c}, o)
 	}
@@ -2116,8 +2116,6 @@ func setPX(h RR_Header, c chan lex, o, f string) (RR, *ParseError, string) {
 	}
 	return rr, nil, ""
 }
-
-var privateParserFunc = map[uint16]func(h RR_Header, l *Lexer, origin string) (RR, *ParseError, string){}
 
 var typeToparserFunc = map[uint16]parserFunc{
 	TypeAAAA:       parserFunc{setAAAA, false},

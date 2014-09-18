@@ -34,15 +34,15 @@ func ReadMagic(hdr RR_Header, l *Lexer, origin string) (RR, *ParseError, string)
 }
 
 func TestMAGIC(t *testing.T) {
-	typeToRR[TypeMAGIC] = func() RR { return new(MAGIC) }
+	TypeToRR[TypeMAGIC] = func() RR { return new(MAGIC) }
 	TypeToString[TypeMAGIC] = "MAGIC"
 	StringToType["MAGIC"] = TypeMAGIC
-	privateParserFunc[TypeMAGIC] = ReadMagic
+	PrivateParserFunc[TypeMAGIC] = ReadMagic
 	defer func() {
-		delete(typeToRR, TypeMAGIC)
+		delete(TypeToRR, TypeMAGIC)
 		delete(TypeToString, TypeMAGIC)
 		delete(StringToType, "MAGIC")
-		delete(privateParserFunc, TypeMAGIC)
+		delete(PrivateParserFunc, TypeMAGIC)
 	}()
 	x := &MAGIC{RR_Header{Name: "example.org.", Rrtype: TypeMAGIC, Class: ClassINET, Ttl: 30}, "0123"}
 
