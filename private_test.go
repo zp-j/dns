@@ -1,6 +1,8 @@
 package dns
 
 import (
+	"encoding/hex"
+	"fmt"
 	"testing"
 )
 
@@ -12,11 +14,11 @@ type MAGIC struct {
 }
 
 func (rr *MAGIC) Header() *RR_Header { return &rr.Hdr }
-func (rr *MAGIC) Copy() RR {
+func (rr *MAGIC) String() string     { return rr.Hdr.String() + fmt.Sprintf("%x", []byte(rr.Code)) }
+func (rr *MAGIC) len() int           { return rr.Hdr.Len() + 64 }
+func (rr *MAGIC) copy() RR {
 	return &MAGIC{RR_Header{hdr.Name, hdr.Rrtype, hdr.Class, hdr.Ttl, hdr.Rdlength}, rr.Code}
 }
-func (rr *MAGIC) Len() int       { return rr.Hdr.Len() + 64 }
-func (rr *MAGIC) String() string { return rr.Hdr.String() + fmt.Sprintf("%x", []byte(rr.Code)) }
 
 func ReadMagic(hdr RR_Header, l Lexem, _ string) (RR, error, string) {
 	s := l.Token()
@@ -53,16 +55,16 @@ func TestMAGIC(t *testing.T) {
 		t.Fatal(err)
 	}
 	/*
-	if x.String() != y.String() {
-		t.Errorf("Record text representation does not match after parsing wire fmt: %#v != %#v", x, y)
-	}
+		if x.String() != y.String() {
+			t.Errorf("Record text representation does not match after parsing wire fmt: %#v != %#v", x, y)
+		}
 
-	n, err := dns.NewRR(y.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if x.String() != n.String() {
-		t.Errorf("Record text representation does not match after parsing string: %#v != %#v", x, n)
-	}
+		n, err := dns.NewRR(y.String())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if x.String() != n.String() {
+			t.Errorf("Record text representation does not match after parsing string: %#v != %#v", x, n)
+		}
 	*/
 }
