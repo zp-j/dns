@@ -1,6 +1,7 @@
 package dns
 
-// PrivateRR implementation.
+// TODO(miek): prefix with private or something.
+
 // Allows one took hook private RR (RFC XXXX) into this package and have
 // them function like the normal RR already there.
 
@@ -13,11 +14,10 @@ type Lexer struct {
 }
 
 const (
-	Eof = iota
-	String
+	String = iota
 	Space
-	Newline
 	Quote
+	Stop
 )
 
 // Next will read the next token from the Lexer when parsing a private RR.
@@ -41,8 +41,12 @@ func (x *Lexer) Comment() string { return x.l.comment }
 // NewParseError creates a new ParseError from the Lexer.
 func (x *Lexer) NewParseError(err error) *ParseError { return &ParseError{err: err.Error(), lex: x.l} }
 
-// Value returns the value of the token from the lexer. The are a couple of importante values
-// that can be returned: String, Space, Quote, Newline or Eof.
+// Value returns the value of the token from the lexer. The values returned are:
+// String, which is a piece of rdata, like an address or domain name, Space:
+// a blank which seperates pieces of rdata, not the, for instance hex rdata can have
+// embedded spaces, these are also returned with the Space Value. Stop is returned
+// when the parser reached the end of the line or EOF, this is to notify the caller
+// that the parsing should be stopped.
 func (x *Lexer) Value() int {
 	switch x.l.value {
 	case _STRING:
@@ -50,11 +54,11 @@ func (x *Lexer) Value() int {
 	case _BLANK:
 		return Space
 	case _NEWLINE:
-		return Newline
+		return Stop
 	case _QUOTE:
 		return Quote
 	case _EOF:
-		return Eof
+		return Stop
 	}
-	return 0 // TODO(miek: What to do here.
+	return Stop
 }

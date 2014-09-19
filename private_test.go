@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const TypeMAGIC uint16 = 0x0F01
+const typeMAGIC uint16 = 0x0F01
 
 type MAGIC struct {
 	Hdr  RR_Header
@@ -20,7 +20,7 @@ func (rr *MAGIC) Copy() RR {
 	return &MAGIC{RR_Header{rr.Hdr.Name, rr.Hdr.Rrtype, rr.Hdr.Class, rr.Hdr.Ttl, rr.Hdr.Rdlength}, rr.Code}
 }
 
-func ReadMagic(hdr RR_Header, l *Lexer, origin string) (RR, *ParseError, string) {
+func parseMagic(hdr RR_Header, l *Lexer, origin string) (RR, *ParseError, string) {
 	l.Next()
 	s := l.Token()
 	buf := make([]byte, 100)
@@ -34,17 +34,17 @@ func ReadMagic(hdr RR_Header, l *Lexer, origin string) (RR, *ParseError, string)
 }
 
 func TestMAGIC(t *testing.T) {
-	TypeToRR[TypeMAGIC] = func() RR { return new(MAGIC) }
-	TypeToString[TypeMAGIC] = "MAGIC"
-	StringToType["MAGIC"] = TypeMAGIC
-	PrivateParserFunc[TypeMAGIC] = ReadMagic
+	TypeToRR[typeMAGIC] = func() RR { return new(MAGIC) }
+	TypeToString[typeMAGIC] = "MAGIC"
+	StringToType["MAGIC"] = typeMAGIC
+	PrivateParserFunc[typeMAGIC] = parseMagic
 	defer func() {
-		delete(TypeToRR, TypeMAGIC)
-		delete(TypeToString, TypeMAGIC)
+		delete(TypeToRR, typeMAGIC)
+		delete(TypeToString, typeMAGIC)
 		delete(StringToType, "MAGIC")
-		delete(PrivateParserFunc, TypeMAGIC)
+		delete(PrivateParserFunc, typeMAGIC)
 	}()
-	x := &MAGIC{RR_Header{Name: "example.org.", Rrtype: TypeMAGIC, Class: ClassINET, Ttl: 30}, "0123"}
+	x := &MAGIC{RR_Header{Name: "example.org.", Rrtype: typeMAGIC, Class: ClassINET, Ttl: 30}, "0123"}
 
 	buf := make([]byte, 1024)
 	off, err := PackRR(x, buf, 0, nil, false)
