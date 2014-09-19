@@ -43,7 +43,7 @@ func (x *Lexer) NewParseError(err error) *ParseError { return &ParseError{err: e
 
 // Value returns the value of the token from the lexer. The values returned are:
 // String, which is a piece of rdata, like an address or domain name, Space:
-// a blank which seperates pieces of rdata, not the, for instance hex rdata can have
+// a blank which seperates pieces of rdata, note that for instance hex rdata can have
 // embedded spaces, these are also returned with the Space Value. Stop is returned
 // when the parser reached the end of the line or EOF, this is to notify the caller
 // that the parsing should be stopped.
