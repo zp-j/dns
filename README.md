@@ -136,3 +136,5 @@ Example programs can be found in the `github.com/miekg/exdns` repository.
 * NSEC(3) cover/match/closest enclose;
 * Replies with TC bit are not parsed to the end.
 * SIG(0)
+* Fix/create/finish isMsg that looks at package binary and quickly decided if
+    the message is valid (and worth parsing)
