@@ -1657,6 +1657,8 @@ func (dns *Msg) Unpack(msg []byte) (err error) {
 	// an error, because technically it isn't an error. So return
 	// without parsing the potentially corrupt packet and hitting an error.
 	// TODO(miek): this isn't the best strategy!
+	// It really isn't. What we should do, is setting a boolean,
+	// parse the packet and ignoring the error when the boolean is true.
 	if dns.Truncated {
 		dns.Answer = nil
 		dns.Ns = nil

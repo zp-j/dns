@@ -69,6 +69,9 @@ func Exchange(m *Msg, a string) (r *Msg, err error) {
 	if err == nil && r.Id != m.Id {
 		err = ErrId
 	}
+	if r != nil {
+		r.Compress = true
+	}
 	return r, err
 }
 
@@ -91,6 +94,9 @@ func ExchangeConn(c net.Conn, m *Msg) (r *Msg, err error) {
 	r, err = co.ReadMsg()
 	if err == nil && r.Id != m.Id {
 		err = ErrId
+	}
+	if r != nil {
+		r.Compress = true
 	}
 	return r, err
 }
@@ -181,6 +187,12 @@ func (c *Client) exchange(m *Msg, a string) (r *Msg, rtt time.Duration, err erro
 	r, err = co.ReadMsg()
 	if err == nil && r.Id != m.Id {
 		err = ErrId
+	}
+	// Set Compress to true, because a) we mostly will receive compressed messages and
+	// b) if you send this somewhere else *without* compression it will fail because
+	// you will overflow the 512b buffer.
+	if r != nil {
+		r.Compress = true
 	}
 	return r, co.rtt, err
 }
