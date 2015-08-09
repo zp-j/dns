@@ -139,7 +139,7 @@ Example programs can be found in the `github.com/miekg/exdns` repository.
 ## TODO
 
 * privatekey.Precompute() when signing?
-* Last remaining RRs: APL, ATMA, A6 and NXT.
-* Missing in parsing: ISDN, UNSPEC, ATMA.
+* Last remaining RRs: APL, ATMA, NSAP, A6 and NXT.
+* Missing in parsing: ISDN, UNSPEC, NSAP, ATMA.
 * NSEC(3) cover/match/closest enclose.
 * Replies with TC bit are not parsed to the end.
