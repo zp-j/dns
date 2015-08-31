@@ -47,6 +47,14 @@ func Dedup(rrs []RR, m map[string]RR) []RR {
 	return rrs[:j]
 }
 
+// Sanitize will santize a dns message, it will:
+// * Dedup all sections
+// * Remove "other data" when there are CNAMEs or DNAMEs
+// * Sort CNAMEs before data they might reference.
+func (dns *Msg) Sanitize() {
+
+}
+
 // normalizedString returns a normalized string from r. The TTL
 // is removed and the domain name is lowercased. We go from this:
 // DomainName<TAB>TTL<TAB>CLASS<TAB>TYPE<TAB>RDATA to:
