@@ -47,6 +47,27 @@ func Dedup(rrs []RR, m map[string]RR) []RR {
 	return rrs[:j]
 }
 
+// Normalize normalizes the RRs in rrs. It will
+//
+// * Put CNAMEs before any address records (this helps stub resolvers actually parse the answer)
+// * Sort CNAME chains in their natural order: b->c, a->b, becomes: a->b, b->c
+func Normalize(rrs []RR) []RR {
+	return rrs
+}
+
+// Fit will make m fit the size. If a message is larger than size the entire
+// additional section is dropped. If it is still too large and net
+// is "udp", "udp4" or "udp6" we return a truncated message.
+// TODO(miek): smartness wrt to DNSSEC signatures and delegations (we can't drop everything
+// in the add. section because we might need it for the delegation to work)
+//
+// If net is "tcp", "tcp4" or "tcp6" we are going to drop RR from the answer section
+// until it fits. When this is case the returned bool is true.
+// TODO(miek): not sure I want this behavoir for tcp.
+func Fit(m *Msg, size int, net string) (*Msg, bool) {
+	return nil, false
+}
+
 // normalizedString returns a normalized string from r. The TTL
 // is removed and the domain name is lowercased. We go from this:
 // DomainName<TAB>TTL<TAB>CLASS<TAB>TYPE<TAB>RDATA to:
