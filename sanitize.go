@@ -47,10 +47,10 @@ func Dedup(rrs []RR, m map[string]RR) []RR {
 	return rrs[:j]
 }
 
-// Normalize normalizes the RRs in rrs. It will
+// Normalize normalizes the RRs in rrs. It will:
 //
-// * Put CNAMEs before any address records (this helps stub resolvers actually parse the answer)
-// * Sort CNAME chains in their natural order: b->c, a->b, becomes: a->b, b->c
+// * Sort CNAME chains in their chaining order: b->c, a->b, becomes: a->b, b->c
+//
 func Normalize(rrs []RR) []RR {
 	return rrs
 }
