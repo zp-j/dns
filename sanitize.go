@@ -1,5 +1,7 @@
 package dns
 
+import "sort"
+
 // Dedup removes identical RRs from rrs. It preserves the original ordering.
 // The lowest TTL of any duplicates is used in the remaining one. Dedup modifies
 // rrs.
@@ -47,11 +49,42 @@ func Dedup(rrs []RR, m map[string]RR) []RR {
 	return rrs[:j]
 }
 
+// normalizeRRset is used to sort rrs in the Sort function.
+type normalizeRRset struct {
+	rrs   []RR
+	order map[string]string
+}
+
+func (n normalizeRRset) Len() int      { return len(n.rrs) }
+func (n normalizeRRset) Swap(i, j int) { n.rrs[i], n.rrs[j] = n.rrs[j], n.rrs[i] }
+func (n normalizeRRset) Less(i, j int) bool {
+	a, b := n.rrs[i].Header().Name, n.rrs[j].Header().Name
+	b1, ok := n.order[a]
+	if ok && b == b1 {
+		return true
+	}
+	return false
+}
+
 // Sort sorts the RRs in rrs. It will:
 //
 // * Sort CNAME chains in their chaining order: b->c, a->b, becomes: a->b, b->c
 //
-func Sort(rrs []RR) []RR {
+// m is used to store the RRs temporay. If it is nil a new map will be allocated.
+func Sort(rrs []RR, m map[string]string) []RR {
+	if m == nil {
+		m = make(map[string]string)
+	}
+	for _, r := range rrs {
+		if c, ok := r.(*CNAME); ok {
+			m[r.Header().Name] = c.Target
+		}
+
+	}
+	if len(m) == 0 {
+		return rrs
+	}
+	sort.Sort(normalizeRRset{rrs, m})
 	return rrs
 }
 
@@ -60,10 +93,6 @@ func Sort(rrs []RR) []RR {
 // is "udp", "udp4" or "udp6" we return a truncated message.
 // TODO(miek): smartness wrt to DNSSEC signatures and delegations (we can't drop everything
 // in the add. section because we might need it for the delegation to work)
-//
-// If net is "tcp", "tcp4" or "tcp6" we are going to drop RR from the answer section
-// until it fits. When this is case the returned bool is true.
-// TODO(miek): not sure I want this behavoir for tcp.
 func Fit(m *Msg, size int, net string) (*Msg, bool) {
 	return nil, false
 }

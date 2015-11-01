@@ -3,7 +3,6 @@ package dns
 import "testing"
 
 func TestDedup(t *testing.T) {
-	// make it []string
 	testcases := map[[3]RR][]string{
 		[...]RR{
 			newRR(t, "mIek.nl. IN A 127.0.0.1"),
@@ -57,7 +56,56 @@ func BenchmarkDedup(b *testing.B) {
 	}
 	m := make(map[string]RR)
 	for i := 0; i < b.N; i++ {
-		Dedup(rrs,m )
+		Dedup(rrs, m)
+	}
+}
+
+func TestSort(t *testing.T) {
+	testcases := map[[4]RR][]RR{
+		[...]RR{
+			newRR(t, "www.miek.nl. IN CNAME a.miek.nl."),
+			newRR(t, "a.miek.nl. IN A 176.58.119.54"),
+			newRR(t, "a.miek.nl. IN AAAA ::1"),
+			newRR(t, "a.miek.nl. IN AAAA ::1"),
+		}: []RR{
+			newRR(t, "www.miek.nl. IN CNAME a.miek.nl."),
+			newRR(t, "a.miek.nl. IN A 176.58.119.54"),
+			newRR(t, "a.miek.nl. IN AAAA ::1"),
+			newRR(t, "a.miek.nl. IN AAAA ::1"),
+		},
+
+		[...]RR{
+			newRR(t, "a.miek.nl. IN A 176.58.119.54"),
+			newRR(t, "www.miek.nl. IN CNAME a.miek.nl."),
+			newRR(t, "a.miek.nl. IN AAAA ::1"),
+			newRR(t, "a.miek.nl. IN AAAA ::1"),
+		}: []RR{
+			newRR(t, "www.miek.nl. IN CNAME a.miek.nl."),
+			newRR(t, "a.miek.nl. IN A 176.58.119.54"),
+			newRR(t, "a.miek.nl. IN AAAA ::1"),
+			newRR(t, "a.miek.nl. IN AAAA ::1"),
+		},
+
+		[...]RR{
+			newRR(t, "a.miek.nl. IN A 176.58.119.54"),
+			newRR(t, "www.miek.nl. IN CNAME b.miek.nl."),
+			newRR(t, "b.miek.nl. IN CNAME a.miek.nl."),
+			newRR(t, "a.miek.nl. IN AAAA ::1"),
+		}: []RR{
+			newRR(t, "www.miek.nl. IN CNAME b.miek.nl."),
+			newRR(t, "b.miek.nl. IN CNAME a.miek.nl."),
+			newRR(t, "a.miek.nl. IN A 176.58.119.54"),
+			newRR(t, "a.miek.nl. IN AAAA ::1"),
+		},
+	}
+
+	for rr, expected := range testcases {
+		out := Sort([]RR{rr[0], rr[1], rr[2], rr[3]}, nil)
+		for i, o := range out {
+			if o.String() != expected[i].String() {
+				t.Fatalf("expected:\n%v\n, got:\n%v\n", expected, out)
+			}
+		}
 	}
 }
 
