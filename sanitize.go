@@ -47,11 +47,11 @@ func Dedup(rrs []RR, m map[string]RR) []RR {
 	return rrs[:j]
 }
 
-// Normalize normalizes the RRs in rrs. It will:
+// Sort sorts the RRs in rrs. It will:
 //
 // * Sort CNAME chains in their chaining order: b->c, a->b, becomes: a->b, b->c
 //
-func Normalize(rrs []RR) []RR {
+func Sort(rrs []RR) []RR {
 	return rrs
 }
 
