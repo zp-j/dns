@@ -1,10 +1,7 @@
 // DNS packet assembly, see RFC 1035. Converting from - Unpack() -
 // and to - Pack() - wire format.
-// All the packers and unpackers take a (msg []byte, off int)
-// and return (off1 int, ok bool).  If they return ok==false, they
-// also return off1==len(msg), so that the next unpacker will
-// also fail.  This lets us avoid checks of ok until the end of a
-// packing sequence.
+
+//go:generate go run msg_generate.go
 
 package dns
 
