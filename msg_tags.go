@@ -4,25 +4,26 @@ import "net"
 
 // Pack and unpack functions for messages.
 
-// unpackA unpacks the IP stored in an A record.
-func unpackA(msg []byte, off int) (net.IP, int, error) {
+func errPack(tag string) error   { return &Error{err: "overflow packing `" + tag + "'"} }
+func errUnpack(tag string) error { return &Error{err: "overflow unpacking `" + tag + "'"} }
+
+func unpackTagA(msg []byte, off int) (net.IP, int, error) {
 	lenmsg := len(msg)
 	if off == lenmsg {
 		return nil, off, nil // dynamic updates
 	}
 	if off+net.IPv4len > lenmsg {
-		return nil, lenmsg, &Error{err: "overflow unpacking a"}
+		return nil, lenmsg, errUnpack("a")
 	}
 	a := net.IPv4(msg[off], msg[off+1], msg[off+2], msg[off+3])
 	off += net.IPv4len
 	return a, off, nil
 }
 
-// packA packs the IP stored in an A record.
-func packA(a net.IP, msg []byte, off int) (int, error) {
+func packTagA(a net.IP, msg []byte, off int) (int, error) {
 	lenmsg := len(msg)
 	if off+net.IPv4len > lenmsg {
-		return lenmsg, &Error{err: "overflow packing a"}
+		return lenmsg, errPack("a")
 	}
 	switch len(a) {
 	case net.IPv6len:
@@ -40,18 +41,18 @@ func packA(a net.IP, msg []byte, off int) (int, error) {
 	case 0:
 		// Allowed, for dynamic updates
 	default:
-		return lenmsg, &Error{err: "overflow packing a"}
+		return lenmsg, errPack("a")
 	}
 	return off, nil
 }
 
-func unpackAAAA(msg []byte, off int) (net.IP, int, error) {
+func unpackTagAAAA(msg []byte, off int) (net.IP, int, error) {
 	lenmsg := len(msg)
 	if off == lenmsg {
 		return nil, off, nil // dynamic updates
 	}
 	if off+net.IPv6len > lenmsg {
-		return nil, lenmsg, &Error{err: "overflow unpacking aaaa"}
+		return nil, lenmsg, errUnpack("aaaa")
 	}
 	aaaa := net.IP{msg[off], msg[off+1], msg[off+2], msg[off+3], msg[off+4],
 		msg[off+5], msg[off+6], msg[off+7], msg[off+8], msg[off+9], msg[off+10],
@@ -60,10 +61,10 @@ func unpackAAAA(msg []byte, off int) (net.IP, int, error) {
 	return aaaa, off, nil
 }
 
-func packAAAA(aaaa net.IP, msg []byte, off int) (int, error) {
+func packTagAAAA(aaaa net.IP, msg []byte, off int) (int, error) {
 	lenmsg := len(msg)
 	if off+net.IPv6len > lenmsg {
-		return lenmsg, &Error{err: "overflow packing aaaa"}
+		return lenmsg, errPack("aaaa")
 	}
 	switch len(aaaa) {
 	case net.IPv6len:
@@ -74,7 +75,7 @@ func packAAAA(aaaa net.IP, msg []byte, off int) (int, error) {
 	case 0:
 		// Allowed, for dynamic updates
 	default:
-		return lenmsg, &Error{err: "overflow packing aaaa"}
+		return lenmsg, errPack("aaaa")
 	}
 	return off, nil
 }

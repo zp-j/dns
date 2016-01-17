@@ -1,12 +1,12 @@
 package dns
 
+// Utility functions for packing and unpacking.
+
 import (
 	"encoding/base32"
 	"encoding/base64"
 	"math/big"
 )
-
-// Utility functions for packing and unpacking.
 
 func isDigit(b byte) bool { return b >= '0' && b <= '9' }
 
