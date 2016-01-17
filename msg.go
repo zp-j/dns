@@ -9,10 +9,7 @@
 package dns
 
 import (
-	"encoding/base32"
-	"encoding/base64"
 	"encoding/hex"
-	"math/big"
 	"math/rand"
 	"net"
 	"reflect"
@@ -1303,60 +1300,10 @@ func unpackStructValue(val reflect.Value, msg []byte, off int) (off1 int, err er
 	return off, nil
 }
 
-// Helpers for dealing with escaped bytes
-func isDigit(b byte) bool { return b >= '0' && b <= '9' }
-
-func dddToByte(s []byte) byte {
-	return byte((s[0]-'0')*100 + (s[1]-'0')*10 + (s[2] - '0'))
-}
-
 // UnpackStruct unpacks a binary message from offset off to the interface
 // value given.
 func UnpackStruct(any interface{}, msg []byte, off int) (int, error) {
 	return unpackStructValue(structValue(any), msg, off)
-}
-
-// Helper function for packing and unpacking
-func intToBytes(i *big.Int, length int) []byte {
-	buf := i.Bytes()
-	if len(buf) < length {
-		b := make([]byte, length)
-		copy(b[length-len(buf):], buf)
-		return b
-	}
-	return buf
-}
-
-func unpackUint16(msg []byte, off int) (uint16, int) {
-	return uint16(msg[off])<<8 | uint16(msg[off+1]), off + 2
-}
-
-func packUint16(i uint16) (byte, byte) {
-	return byte(i >> 8), byte(i)
-}
-
-func toBase32(b []byte) string {
-	return base32.HexEncoding.EncodeToString(b)
-}
-
-func fromBase32(s []byte) (buf []byte, err error) {
-	buflen := base32.HexEncoding.DecodedLen(len(s))
-	buf = make([]byte, buflen)
-	n, err := base32.HexEncoding.Decode(buf, s)
-	buf = buf[:n]
-	return
-}
-
-func toBase64(b []byte) string {
-	return base64.StdEncoding.EncodeToString(b)
-}
-
-func fromBase64(s []byte) (buf []byte, err error) {
-	buflen := base64.StdEncoding.DecodedLen(len(s))
-	buf = make([]byte, buflen)
-	n, err := base64.StdEncoding.Decode(buf, s)
-	buf = buf[:n]
-	return
 }
 
 // PackRR packs a resource record rr into msg[off:].
