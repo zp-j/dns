@@ -18,12 +18,9 @@ import (
 	"strings"
 )
 
-var skipLen = map[string]struct{}{
-	"NSEC":     struct{}{},
-	"NSEC3":    struct{}{},
-	"OPT":      struct{}{},
-	"WKS":      struct{}{},
-	"IPSECKEY": struct{}{},
+var generate = map[string]struct{}{
+	"A":     struct{}{},
+	"AAAA": struct{}{},
 }
 
 var packageHdr = `
@@ -114,7 +111,8 @@ func main() {
 	b.WriteString(packageHdr)
 
 	for _, name := range namedTypes {
-		if _, ok := skipLen[name]; ok {
+		// Check what types have been moved.
+		if _, ok := generate[name]; !ok {
 			continue
 		}
 		o := scope.Lookup(name)
