@@ -4,27 +4,26 @@
 package dns
 
 import (
-	"encoding/base64"
 	"net"
 )
 
-func (rr *A) pack() int {
+func (rr *A) pack(msg []byte, off int, compression map[string]int, compress bool) (int, error) {
 	l := rr.Hdr.len()
 	l += net.IPv4len // A
-	return l
+	return l, nil
 }
-func (rr *A) unpack() int {
-	l := rr.Hdr.len()
+func unpackA(msg []byte, off int) (*A, int, error) {
+	l := 0
 	l += net.IPv4len // A
-	return l
+	return nil, l, nil
 }
-func (rr *AAAA) pack() int {
+func (rr *AAAA) pack(msg []byte, off int, compression map[string]int, compress bool) (int, error) {
 	l := rr.Hdr.len()
 	l += net.IPv6len // AAAA
-	return l
+	return l, nil
 }
-func (rr *AAAA) unpack() int {
-	l := rr.Hdr.len()
+func unpackAAAA(msg []byte, off int) (*AAAA, int, error) {
+	l := 0
 	l += net.IPv6len // AAAA
-	return l
+	return nil, l, nil
 }

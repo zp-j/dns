@@ -1310,7 +1310,14 @@ func PackRR(rr RR, msg []byte, off int, compression map[string]int, compress boo
 		return len(msg), &Error{err: "nil rr"}
 	}
 
-	off1, err = packStructCompress(rr, msg, off, compression, compress)
+	// TODO(miek): have a map for this
+	switch t := rr.(type) {
+	case *A, *AAAA:
+		off1, err = t.pack(msg, off, compression, compress)
+	default:
+		off1, err = packStructCompress(rr, msg, off, compression, compress)
+	}
+
 	if err != nil {
 		return len(msg), err
 	}
@@ -1329,14 +1336,24 @@ func UnpackRR(msg []byte, off int) (rr RR, off1 int, err error) {
 		return nil, len(msg), err
 	}
 	end := off + int(h.Rdlength)
-	// make an rr of that type and re-unpack.
-	mk, known := TypeToRR[h.Rrtype]
-	if !known {
-		rr = new(RFC3597)
-	} else {
-		rr = mk()
+
+	// TODO(miek): have a map for this
+	switch h.Rrtype {
+	case TypeA:	// Use a map for these as well?
+		rr, off, err = unpackA(msg, off)
+	case TypeAAAA:
+		rr, off, err = unpackAAAA(msg, off)
+	default:
+		// make an rr of that type and re-unpack.
+		mk, known := TypeToRR[h.Rrtype]
+		if !known {
+			rr = new(RFC3597)
+		} else {
+			rr = mk()
+		}
+		off, err = UnpackStruct(rr, msg, off0)
 	}
-	off, err = UnpackStruct(rr, msg, off0)
+
 	if off != end {
 		return &h, end, &Error{err: "bad rdlength"}
 	}

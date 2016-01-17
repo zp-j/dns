@@ -30,10 +30,13 @@ type RR interface {
 	Header() *RR_Header
 	// String returns the text representation of the resource record.
 	String() string
+
 	// copy returns a copy of the RR
 	copy() RR
 	// len returns the length (in octets) of the uncompressed RR in wire format.
 	len() int
+	// pack converts an RR to wire format.
+	pack(msg []byte, off int, compression map[string]int, compress bool) (int, error)
 }
 
 // RR_Header is the header all DNS resource records share.
