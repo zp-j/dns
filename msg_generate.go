@@ -19,13 +19,10 @@ import (
 // All RR pack and unpack functions should be generated, currently RR that present some
 // problems
 // * NSEC/NSEC3 - type bitmap
-// * TXT/SPF - string slice
-// * URI - weird octet thing there
+// * URI/CAA - weird octet thing there
 // * NSEC3/TSIG - size hex
 // * OPT RR - EDNS0 parsing - needs to some looking at
 // * HIP - uses "hex", but is actually size-hex - might drop size-hex?
-// * Z
-// * NINFO
 // * PrivateRR
 
 var packageHdr = `
@@ -90,10 +87,10 @@ func main() {
 	fmt.Fprint(b, "// pack*() functions\n\n")
 	for _, name := range namedTypes {
 		o := scope.Lookup(name)
-		st, isEmbedded := getTypeStruct(o.Type(), scope)
-		if isEmbedded {
-			continue
-		}
+		st, _ := getTypeStruct(o.Type(), scope)
+		//if isEmbedded {
+		//continue
+		//}
 
 		fmt.Fprintf(b, "func (rr *%s) pack(msg []byte, off int, compression map[string]int, compress bool) (int, error) {\n", name)
 		fmt.Fprint(b, `off, err := rr.Hdr.pack(msg, off, compression, compress)
@@ -169,10 +166,10 @@ return off, err
 	fmt.Fprint(b, "// unpack*() functions\n\n")
 	for _, name := range namedTypes {
 		o := scope.Lookup(name)
-		st, isEmbedded := getTypeStruct(o.Type(), scope)
-		if isEmbedded {
-			continue
-		}
+		st, _ := getTypeStruct(o.Type(), scope)
+		//if isEmbedded {
+		//continue
+		//}
 
 		fmt.Fprintf(b, "func unpack%s(h RR_Header, msg []byte, off int) (RR, int, error) {\n", name)
 		fmt.Fprint(b, `if noRdata(h) {
