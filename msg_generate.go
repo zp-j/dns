@@ -88,9 +88,6 @@ func main() {
 	for _, name := range namedTypes {
 		o := scope.Lookup(name)
 		st, _ := getTypeStruct(o.Type(), scope)
-		//if isEmbedded {
-		//continue
-		//}
 
 		fmt.Fprintf(b, "func (rr *%s) pack(msg []byte, off int, compression map[string]int, compress bool) (int, error) {\n", name)
 		fmt.Fprint(b, `off, err := rr.Hdr.pack(msg, off, compression, compress)
@@ -167,9 +164,6 @@ return off, err
 	for _, name := range namedTypes {
 		o := scope.Lookup(name)
 		st, _ := getTypeStruct(o.Type(), scope)
-		//if isEmbedded {
-		//continue
-		//}
 
 		fmt.Fprintf(b, "func unpack%s(h RR_Header, msg []byte, off int) (RR, int, error) {\n", name)
 		fmt.Fprint(b, `if noRdata(h) {
