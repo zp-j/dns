@@ -10,6 +10,7 @@ import (
 	"net"
 	"sync"
 	"time"
+	"log"
 )
 
 // Maximum number of TCP queries before we close the socket.
@@ -534,6 +535,11 @@ func (srv *Server) serveUDP(l *net.UDPConn) error {
 
 // Serve a new connection.
 func (srv *Server) serve(a net.Addr, h Handler, m []byte, u *net.UDPConn, s *SessionUDP, t net.Conn) {
+	log.Printf(">> [serve] Serve a new connection. \n")
+	log.Printf(">> [serve] Remote address: %s\n", a)
+	log.Printf(">> [serve] UDP: %+v\n", u)
+	log.Printf(">> [serve] m: %s\n", string(m))
+
 	defer srv.inFlight.Done()
 
 	w := &response{tsigSecret: srv.TsigSecret, udp: u, tcp: t, remoteAddr: a, udpSession: s}

@@ -11,6 +11,8 @@ package dns
 //go:generate go run msg_generate.go
 
 import (
+	"log"
+
 	crand "crypto/rand"
 	"encoding/binary"
 	"math/big"
@@ -774,6 +776,7 @@ func (dns *Msg) PackBuffer(buf []byte) (msg []byte, err error) {
 
 // Unpack unpacks a binary message to a Msg structure.
 func (dns *Msg) Unpack(msg []byte) (err error) {
+	log.Printf(">> [Unpack] msg: %s\n", string(msg))
 	var (
 		dh  Header
 		off int
@@ -844,6 +847,7 @@ func (dns *Msg) Unpack(msg []byte) (err error) {
 
 // Convert a complete message to a string with dig-like output.
 func (dns *Msg) String() string {
+	log.Printf(">> [Msg] dns: %+v\n", dns)
 	if dns == nil {
 		return "<nil> MsgHdr"
 	}
